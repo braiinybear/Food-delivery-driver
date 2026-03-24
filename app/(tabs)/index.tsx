@@ -30,7 +30,6 @@ export default function HomeScreen() {
     return (
       <>
         <Tabs.Screen options={{ tabBarStyle: { display: "none" } }} />
-    
         <RiderWelcomeScreen />
       </>
     );

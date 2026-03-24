@@ -27,8 +27,7 @@ const VEHICLE_TYPES = ["Bike", "Scooter", "Car"];
 // ─── Driver Application Form Screen ────────────────────────────────────────────
 export default function DriverFormScreen() {
   const { setAppliedForRider } = usePartnerStore();
-  const { mutate: applyAsRider, isPending: isLoading } =
-    useApplyDeliveryPartner();
+  const { mutate: applyAsRider, isPending: isLoading } =useApplyDeliveryPartner();
 
   const [vehicleType, setVehicleType] = useState("Bike");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -257,7 +256,7 @@ export default function DriverFormScreen() {
             [
               {
                 text: "OK",
-                onPress: () => router.push("/(tabs)"),
+                onPress: () => router.push("/"),
               },
             ],
           );
