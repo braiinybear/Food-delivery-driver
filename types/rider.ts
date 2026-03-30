@@ -33,3 +33,31 @@ export interface DeliveryPartnerStatusResponse {
   vehicleType: "Bike" | "Scooter" | "Car";
   createdAt: string;
 }
+
+
+export type DriverStatus = "ONLINE" | "OFFLINE";
+
+export interface DeliveryUser {
+  name: string;
+  email: string;
+  phoneNumber: string | null;
+  image: string | null;
+}
+
+export interface DeliveryProfile {
+  id: string;
+  userId: string;
+  status: DriverStatus;
+  currentLat: number | null;
+  currentLng: number | null;
+  vehicleType: VehicleType;
+  licenseNumber: string;
+  vehiclePlate: string;
+  profilePic: string;
+  rating: number;
+  ratingCount: number;
+  totalDeliveries: number;
+  createdAt: string;
+  updatedAt: string;
+  user: DeliveryUser;
+}

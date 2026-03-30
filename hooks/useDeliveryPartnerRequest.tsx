@@ -1,18 +1,18 @@
-
 import apiClient from "@/lib/axios";
-import { DeliveryPartnerRequestBody, DeliveryPartnerResponse,DeliveryPartnerStatusResponse } from "../types/rider";
+import {
+  DeliveryPartnerRequestBody,
+  DeliveryPartnerResponse,
+  DeliveryPartnerStatusResponse,
+} from "../types/rider";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const applyForDeliveryPartner = async (
-  body: DeliveryPartnerRequestBody
+  body: DeliveryPartnerRequestBody,
 ): Promise<DeliveryPartnerResponse> => {
-  const { data } = await apiClient.post(
-    "/api/partner-requests/delivery",
-    body
-  );
+  const { data } = await apiClient.post("/api/partner-requests/delivery", body);
 
-  return data;
+  return data as DeliveryPartnerResponse;
 };
 
 export const useApplyDeliveryPartner = () => {
@@ -34,13 +34,9 @@ export const useApplyDeliveryPartner = () => {
   });
 };
 
-
-
 export const getMyDeliveryPartnerStatus =
   async (): Promise<DeliveryPartnerStatusResponse> => {
-    const { data } = await apiClient.get(
-      "/api/partner-requests/delivery/me"
-    );
+    const { data } = await apiClient.get("/api/partner-requests/delivery/me");
     return data;
   };
 

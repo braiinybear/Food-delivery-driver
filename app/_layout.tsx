@@ -18,6 +18,17 @@ import * as ExpoSplashScreen from "expo-splash-screen";
 
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import * as Notifications from "expo-notifications";
+import { NotificationProvider } from "@/context/NotificationContext";
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldShowAlert: true,
+  }),
+});
 
 // Keep the native splash visible while we load
 ExpoSplashScreen.preventAutoHideAsync();
@@ -53,7 +64,6 @@ export default function RootLayout() {
   const isLoggedIn = !isPending && !!session;
   const isLoggedOut = !isPending && !session;
 
-
   // Show nothing until fonts are ready
   if (!appReady) return null;
 
@@ -69,42 +79,67 @@ export default function RootLayout() {
     },
   });
 
-
   return (
-    <QueryClientProvider client={queryClient}>
-      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        {/* Animated in-app splash on first load */}
-        {!splashDone && (
-          <SplashScreenView onFinish={() => setSplashDone(true)} />
-        )}
+    <NotificationProvider>
+      <QueryClientProvider client={queryClient}>
+        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+          {/* Animated in-app splash on first load */}
+          {!splashDone && (
+            <SplashScreenView onFinish={() => setSplashDone(true)} />
+          )}
 
-        {/* Instant solid overlay during auth state transitions — no fade-in so no black flash */}
-        {splashDone && isPending && (
-          <View style={transitionStyles.overlay}>
-            <ActivityIndicator size="small" color={Colors.primary} />
-          </View>
-        )}
+          {/* Instant solid overlay during auth state transitions — no fade-in so no black flash */}
+          {splashDone && isPending && (
+            <View style={transitionStyles.overlay}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          )}
 
-        <Stack>
-          {/* Only accessible when not logged in */}
-          <Stack.Protected guard={isLoggedOut}>
-            <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
-            <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
-          </Stack.Protected>
+          <Stack>
+            {/* Only accessible when not logged in */}
+            <Stack.Protected guard={isLoggedOut}>
+              <Stack.Screen
+                name="(auth)/login"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="(auth)/register"
+                options={{ headerShown: false }}
+              />
+            </Stack.Protected>
 
-          {/* Only accessible when logged in */}
-          <Stack.Protected guard={isLoggedIn}>
-            <Stack.Screen
-              name="(tabs)"
-              options={{
-                headerShown: false,
-              }}
-            />
-                <Stack.Screen name="driverform" options={{headerShown:false}} />
-          </Stack.Protected>
-        </Stack>
-      </View>
-    </QueryClientProvider>
+            {/* Only accessible when logged in */}
+            <Stack.Protected guard={isLoggedIn}>
+              <Stack.Screen
+                name="(tabs)"
+                options={{
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="driverform"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="riderprofile"
+                options={{
+                  headerShown: true,
+                  headerTitle: "Profile",
+                  headerTintColor: "#fff",
+                  headerStyle: {
+                    backgroundColor: Colors.primary,
+                  },
+                  headerTitleAlign: "center",
+                  headerTitleStyle: {
+                    color: "#fff",
+                  },
+                }}
+              />
+            </Stack.Protected>
+          </Stack>
+        </View>
+      </QueryClientProvider>
+    </NotificationProvider>
   );
 }
 const transitionStyles = StyleSheet.create({

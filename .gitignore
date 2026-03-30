@@ -17,10 +17,12 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
-
+google-services.json
+/ios
+/android
 # Metro
 .metro-health-check*
-
+food-delivery-customer-de54a-firebase-adminsdk-fbsvc-ed20b9ebd8.json
 # debug
 npm-debug.*
 yarn-debug.*
