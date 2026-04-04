@@ -13,7 +13,7 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 const BETTER_AUTH_COOKIE_KEY = "better-auth_cookie";
 
 /** Parse the JSON blob stored by @better-auth/expo into a Cookie header string */
-function parseCookieBlob(blob: string | null): string {
+export function parseCookieBlob(blob: string | null): string {
     if (!blob) return "";
     try {
         const parsed: Record<string, { value: string; expires: string | null }> =

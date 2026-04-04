@@ -6,7 +6,12 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development",
+      "env": {
+        "GOOGLE_SERVICES_JSON": "GOOGLE_SERVICES_JSON",
+        "FIREBASE_SERVICE_ACCOUNT": "FIREBASE_SERVICE_ACCOUNT"
+      }
     },
     "preview": {
       "distribution": "internal"

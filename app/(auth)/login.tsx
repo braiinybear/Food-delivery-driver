@@ -142,7 +142,7 @@ export default function Login() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "food-delivery-customer:///",
+                callbackURL: "food-delivery-driver:///",
             });
         } catch (err) {
             console.log(err);

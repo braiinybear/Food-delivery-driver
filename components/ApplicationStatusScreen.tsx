@@ -50,7 +50,10 @@ export default function ApplicationStatusScreen() {
           iconBackgroundColor: "rgba(46, 204, 113, 0.1)",
           message: `Congratulations! Your delivery partner application has been approved. You can now start accepting delivery orders with your ${application?.vehicleType || "vehicle"}.`,
           primaryButtonText: "Go to Dashboard",
-          primaryButtonAction: () => router.push("/(tabs)"),
+          primaryButtonAction: () => {
+            setAppliedForRider(false);
+            router.replace("/");
+          },
           containerBackgroundColor: "rgba(46, 204, 113, 0.05)",
         };
 
@@ -381,13 +384,10 @@ export default function ApplicationStatusScreen() {
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          {content.primaryButtonText && (
+          {content.primaryButtonText && content.primaryButtonAction && (
             <TouchableOpacity
               style={styles.primaryBtn}
-              onPress={() => {
-                setAppliedForRider(false);
-                router.replace("/");
-              }}
+              onPress={content.primaryButtonAction}
             >
               <Ionicons
                 name={
@@ -404,7 +404,16 @@ export default function ApplicationStatusScreen() {
             </TouchableOpacity>
           )}
 
-        
+          {content.secondaryButtonText && content.secondaryButtonAction && (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={content.secondaryButtonAction}
+            >
+              <Text style={styles.secondaryBtnText}>
+                {content.secondaryButtonText}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 

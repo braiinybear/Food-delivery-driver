@@ -20,7 +20,7 @@ export const authClient = createAuthClient({
   plugins: [
     expoClient({
       storage: SecureStore, // Encrypted persistence
-      scheme: "food-delivery-customer",
+      scheme: "food-delivery-driver",
     }),
     phoneNumberClient(),
   ],
