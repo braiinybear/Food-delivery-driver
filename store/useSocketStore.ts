@@ -2,12 +2,12 @@ import { create } from 'zustand';
 
 export interface OrderOffer {
   orderId: string;
-  customerId: string;
-  restaurantId: string;
-  amount: number;
-  pickupLocation: { lat: number; lng: number };
-  deliveryLocation: { lat: number; lng: number };
-  timestamp: string;
+  restaurantName?: string;
+  distanceKm?: number | string;
+  earning?: number;
+  expiresInSeconds?: number;
+  timestamp?: string;
+  receivedAt: number;
 }
 
 interface SocketState {
@@ -30,6 +30,7 @@ interface SocketState {
   updateTrackingStatus: (status: string) => void;
   addOrderOffer: (offer: OrderOffer) => void;
   removeOrderOffer: (orderId: string) => void;
+  markOffersSeen: () => void;
   clearOffers: () => void;
   reset: () => void;
 }
@@ -57,15 +58,31 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     }),
 
   addOrderOffer: (offer) =>
-    set((state) => ({
-      orderOffers: [offer, ...state.orderOffers],
-      unreadOffers: state.unreadOffers + 1,
-    })),
+    set((state) => {
+      const alreadyExists = state.orderOffers.some((existing) => existing.orderId === offer.orderId);
+      if (alreadyExists) {
+        return state;
+      }
+
+      return {
+        orderOffers: [{ ...offer, receivedAt: Date.now() }, ...state.orderOffers],
+        unreadOffers: state.unreadOffers + 1,
+      };
+    }),
 
   removeOrderOffer: (orderId) =>
-    set((state) => ({
-      orderOffers: state.orderOffers.filter((o) => o.orderId !== orderId),
-    })),
+    set((state) => {
+      const existed = state.orderOffers.some((o) => o.orderId === orderId);
+      return {
+        orderOffers: state.orderOffers.filter((o) => o.orderId !== orderId),
+        unreadOffers: existed ? Math.max(0, state.unreadOffers - 1) : state.unreadOffers,
+      };
+    }),
+
+  markOffersSeen: () =>
+    set({
+      unreadOffers: 0,
+    }),
 
   clearOffers: () =>
     set({

@@ -35,7 +35,7 @@ export interface DeliveryPartnerStatusResponse {
 }
 
 
-export type DriverStatus = "ONLINE" | "OFFLINE";
+export type DriverStatus = "ONLINE" | "OFFLINE" | "BUSY";
 
 export interface DeliveryUser {
   name: string;

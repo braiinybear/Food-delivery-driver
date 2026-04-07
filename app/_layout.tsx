@@ -23,6 +23,23 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { initSocket } from "@/lib/socket-client";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useSocketOrderOffers } from "@/hooks/useSocketOrders";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 15,
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function SocketBootstrap() {
+  useSocketOrderOffers();
+  return null;
+}
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -38,13 +55,12 @@ ExpoSplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { data: session, isPending } = authClient.useSession();
-  console.log("Session in RootLayout:", session?.session.pushToken);
+  const existingPushToken =
+    (session?.session as { pushToken?: string } | undefined)?.pushToken;
+  console.log("Session in RootLayout:", existingPushToken);
   const [appReady, setAppReady] = useState<boolean>(false);
   const [splashDone, setSplashDone] = useState<boolean>(false);
   const { setConnected, setConnectionError } = useSocketStore();
-  
-  // Start listening for order offers
-  useSocketOrderOffers();
 
   // this is the expo font loader.
   const [fontsLoaded] = useFonts({
@@ -96,21 +112,10 @@ export default function RootLayout() {
   // Show nothing until fonts are ready
   if (!appReady) return null;
 
-  // Create a client
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5, // Data stays fresh for 5 minutes
-        gcTime: 1000 * 60 * 15, // Unused data is garbage collected after 15 minutes
-        retry: 2, // Retry failed requests twice before throwing an error
-        refetchOnWindowFocus: false, // Turn off for less aggressive fetching
-      },
-    },
-  });
-
   return (
   
       <QueryClientProvider client={queryClient}>
+          <SocketBootstrap />
           <NotificationProvider>
         <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
           {/* Animated in-app splash on first load */}

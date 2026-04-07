@@ -40,6 +40,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
   const { data: session } = authClient.useSession();
+  const existingPushToken =
+    (session?.session as { pushToken?: string } | undefined)?.pushToken;
   const [expopushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] =
     useState<Notifications.Notification | null>(null);
@@ -78,12 +80,12 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           setExpoPushToken(token);
           try {
             // First time opening app - register token
-            if (!session?.session?.pushToken) {
+            if (!existingPushToken) {
               await registerPushToken({ token });
               console.log("✅ Push token registered with backend");
             }
             // Token changed on subsequent opens - update token
-            else if (session?.session?.pushToken !== token) {
+            else if (existingPushToken !== token) {
               await updatePushToken({ token });
               console.log("✅ Push token updated with backend");
             }
@@ -126,7 +128,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         responseListener.current.remove();
       }
     };
-  }, [registerPushToken, session, updatePushToken]);
+  }, [existingPushToken, registerPushToken, session, updatePushToken]);
 
   return (
     <NotificationContext.Provider
