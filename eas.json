@@ -10,7 +10,8 @@
       "environment": "development",
       "env": {
         "GOOGLE_SERVICES_JSON": "GOOGLE_SERVICES_JSON",
-        "FIREBASE_SERVICE_ACCOUNT": "FIREBASE_SERVICE_ACCOUNT"
+        "FIREBASE_SERVICE_ACCOUNT": "FIREBASE_SERVICE_ACCOUNT",
+        "GOOGLE_MAPS_API_KEY": "GOOGLE_MAPS_API_KEY"
       }
     },
     "preview": {

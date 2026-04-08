@@ -30,6 +30,26 @@ export const useAcceptDelivery = () => {
 };
 
 /**
+ * Confirm pickup of a delivery order
+ */
+export const usePickupDelivery = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { data } = await apiClient.post<DeliveryMutationResponse>(
+        `/delivery/orders/${orderId}/pickup`
+      );
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate current delivery to fetch updated status
+      queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
+    },
+  });
+};
+
+/**
  * Decline a delivery order
  */
 export const useDeclineDelivery = () => {

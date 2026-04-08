@@ -1,8 +1,42 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
 import { getSocket, initSocket } from '@/lib/socket-client';
+import apiClient from '@/lib/axios';
 
 const MIN_EMIT_INTERVAL_MS = 2000;
+const BACKGROUND_LOCATION_TASK = 'BACKGROUND_LOCATION_TASK';
+
+try {
+  if (TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
+     // Task already defined
+  } else {
+    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
+      if (error) {
+        console.error('[Location] Background task error:', error);
+        return;
+      }
+      if (data) {
+        const { locations } = data as { locations: Location.LocationObject[] };
+        const loc = locations[0];
+        if (loc) {
+          const socket = getSocket();
+          // Fallback to REST for background persistence
+          try {
+            await apiClient.post('/delivery/sync-location', {
+              lat: loc.coords.latitude,
+              lng: loc.coords.longitude,
+            });
+          } catch (e) {
+            // Background sync fail is common on OS suspension
+          }
+        }
+      }
+    });
+  }
+} catch (e) {
+  console.warn('[Location] TaskManager native module not found. Background tracking will be disabled until you rebuild the app.');
+}
 
 export const useLocationTracking = (
   enabled: boolean,
@@ -21,29 +55,45 @@ export const useLocationTracking = (
         locationSubscription.current.remove();
         locationSubscription.current = null;
       }
+      
+      Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).then(started => {
+        if (started) {
+          Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
+        }
+      });
+      
       setIsTracking(false);
     };
 
-    const emitLocation = (latitude: number, longitude: number) => {
+    const emitLocation = async (latitude: number, longitude: number) => {
       const socket = getSocket();
-      if (!socket?.connected || !driverProfileId) {
-        return;
-      }
-
       const trackingOrderId = orderId ?? `availability:${driverProfileId}`;
-
-      socket.emit('driver_location_update', {
-        orderId: trackingOrderId,
-        driverProfileId,
-        lat: latitude,
-        lng: longitude,
-      });
 
       lastLocationUpdate.current = {
         lat: latitude,
         lng: longitude,
         time: Date.now(),
       };
+
+      if (socket?.connected && driverProfileId) {
+        socket.emit('driver_location_update', {
+          orderId: trackingOrderId,
+          driverProfileId,
+          lat: latitude,
+          lng: longitude,
+        });
+      } else if (driverProfileId) {
+        // Fallback to REST API if socket is down or backgrounded
+        try {
+          await apiClient.post('/delivery/sync-location', {
+            lat: latitude,
+            lng: longitude,
+            orderId: orderId ?? undefined,
+          });
+        } catch (e) {
+          console.error('[Location] REST sync failed');
+        }
+      }
     };
 
     const startLocationTracking = async () => {
@@ -55,9 +105,20 @@ export const useLocationTracking = (
         }
 
         try {
-          await Location.requestBackgroundPermissionsAsync();
+          const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+          if (bgStatus === 'granted') {
+             await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+                accuracy: Location.Accuracy.High,
+                distanceInterval: 15,
+                deferredUpdatesInterval: 5000,
+                foregroundService: {
+                  notificationTitle: "Live Driver Tracking Active",
+                  notificationBody: "Tracking your location for food deliveries.",
+                },
+             });
+          }
         } catch {
-          // Foreground updates are enough for the active-delivery flow.
+          // Foreground updates will just have to do
         }
 
         const existingSocket = getSocket();

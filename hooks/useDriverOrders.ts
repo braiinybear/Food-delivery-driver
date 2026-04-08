@@ -134,7 +134,6 @@ export const useAvailableOrders = () => {
         };
       });
     },
-    refetchInterval: 5000, // Refetch every 5 seconds for fresh orders
   });
 };
 
@@ -161,7 +160,6 @@ export const useCurrentDelivery = () => {
         order: (data as DriverCurrentDeliveryOrder) ?? null,
       };
     },
-    refetchInterval: 3000, // Refetch every 3 seconds while on delivery
   });
 };
 

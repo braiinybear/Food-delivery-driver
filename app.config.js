@@ -1,4 +1,6 @@
-{
+import 'dotenv/config';
+
+export default {
   "expo": {
     "name": "food-delivery-driver",
     "slug": "food-delivery-driver",
@@ -8,6 +10,7 @@
     "scheme": "fooddeliverydriver",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "owner": "braiiny-food",
     "ios": {
       "supportsTablet": true
     },
@@ -21,7 +24,13 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",
-      "package": "com.braiinyfood.fooddeliverydriver"
+      "package": "com.braiinyfood.fooddeliverydriver",
+      "config": {
+        "googleMaps": {
+          // Pulls the key from your local .env or EAS Secrets
+          "apiKey": process.env.GOOGLE_MAPS_API_KEY
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -41,7 +50,15 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-task-manager",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow this app to use your location to track deliveries in the background.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -52,7 +69,6 @@
       "eas": {
         "projectId": "9cbd7a8c-4816-4b41-a4cc-c596db891481"
       }
-    },
-    "owner": "braiiny-food"
+    }
   }
-}
+};

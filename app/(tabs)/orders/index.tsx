@@ -10,11 +10,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 import { useAcceptDelivery, useDeclineDelivery } from '@/hooks/useDriverDeliveries';
-import { AvailableOrder, useAvailableOrders } from '@/hooks/useDriverOrders';
+import { AvailableOrder, useAvailableOrders, useCurrentDelivery } from '@/hooks/useDriverOrders';
 import { OrderOffer, useSocketStore } from '@/store/useSocketStore';
 
 const formatDistance = (km: number | null | undefined) => {
@@ -40,12 +43,13 @@ const formatTime = (minutes: number | null | undefined) => {
 };
 
 export default function DriverOrdersScreen() {
+  const router = useRouter();
   const { data: response, isLoading, refetch } = useAvailableOrders();
+  const { data: activeDeliveryData } = useCurrentDelivery();
   const { mutate: acceptDelivery } = useAcceptDelivery();
   const { mutate: declineDelivery } = useDeclineDelivery();
-  const orderOffers = useSocketStore((state) => state.orderOffers);
-  const removeOrderOffer = useSocketStore((state) => state.removeOrderOffer);
-  const markOffersSeen = useSocketStore((state) => state.markOffersSeen);
+  const { removeOrderOffer, clearOffers, markOffersSeen, orderOffers } = useSocketStore();
+  const queryClient = useQueryClient();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -59,7 +63,10 @@ export default function DriverOrdersScreen() {
   const fallbackOrders = useMemo(
     () =>
       orders.filter(
-        (order) =>
+        (order: AvailableOrder) =>
+          // 1. Must be in READY status (Safety check)
+          order.status === 'READY' &&
+          // 2. Must not already be in the live socket offers
           !orderOffers.some(
             (offer) => offer.orderId === order.id || offer.orderId === order.orderId
           )
@@ -68,7 +75,7 @@ export default function DriverOrdersScreen() {
   );
 
   const selectedOrder = useMemo(
-    () => fallbackOrders.find((order) => order.id === selectedOrderId) ?? null,
+    () => fallbackOrders.find((order: AvailableOrder) => order.id === selectedOrderId) ?? null,
     [fallbackOrders, selectedOrderId]
   );
 
@@ -87,19 +94,40 @@ export default function DriverOrdersScreen() {
 
   const handleAcceptOrder = useCallback(
     (orderId: string) => {
+      // Defensive check: Prevent acceptance if already on a delivery
+      if (activeDeliveryData?.order) {
+        Alert.alert(
+          "Already on Delivery",
+          "Please complete your current delivery before accepting a new one."
+        );
+        return;
+      }
+
       setPendingOrderAction({ orderId, type: 'accept' });
       acceptDelivery(orderId, {
         onSuccess: () => {
-          removeOrderOffer(orderId);
+          // 🎉 Clean state: Clear ALL other offers immediately
+          clearOffers();
           setSelectedOrderId(null);
           setPendingOrderAction(null);
+          
+          // Force refresh the active delivery state across the app
+          queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
+          
+          // Switch to the Home tab so tracking starts immediately
+          router.replace('/(tabs)');
         },
-        onError: () => {
+        onError: (err: any) => {
           setPendingOrderAction(null);
+          Alert.alert(
+            "Order Unavailable",
+            err.response?.data?.message || "This order may have been taken by another rider or cancelled.",
+            [{ text: "OK", onPress: () => refetch() }]
+          );
         },
       });
     },
-    [acceptDelivery, removeOrderOffer]
+    [acceptDelivery, clearOffers, refetch, activeDeliveryData]
   );
 
   const handleDeclineOrder = useCallback(
@@ -107,16 +135,27 @@ export default function DriverOrdersScreen() {
       setPendingOrderAction({ orderId, type: 'decline' });
       declineDelivery(orderId, {
         onSuccess: () => {
+          // Force removal from ALL local sources immediately
           removeOrderOffer(orderId);
           setSelectedOrderId(null);
           setPendingOrderAction(null);
+          
+          // Manually update the 'orders' cache locally so it vanishes from fallbackOrders too
+          queryClient.setQueryData(['driver-available-orders'], (old: any) => {
+            if (!old) return old;
+            return old.filter((o: any) => o.id !== orderId);
+          });
+
+          // Also trigger a background refetch for safety
+          refetch();
         },
         onError: () => {
           setPendingOrderAction(null);
+          refetch();
         },
       });
     },
-    [declineDelivery, removeOrderOffer]
+    [declineDelivery, removeOrderOffer, refetch, queryClient]
   );
 
   const isInitialLoading = isLoading && orderOffers.length === 0 && fallbackOrders.length === 0;
@@ -160,7 +199,7 @@ export default function DriverOrdersScreen() {
             </Text>
           </View>
 
-          {orderOffers.map((offer) => (
+          {orderOffers.map((offer: OrderOffer) => (
             <LiveOfferCard
               key={offer.orderId}
               offer={offer}
@@ -168,11 +207,11 @@ export default function DriverOrdersScreen() {
               onDecline={handleDeclineOrder}
               isAccepting={
                 pendingOrderAction?.orderId === offer.orderId &&
-                pendingOrderAction.type === 'accept'
+                pendingOrderAction?.type === 'accept'
               }
               isDeclining={
                 pendingOrderAction?.orderId === offer.orderId &&
-                pendingOrderAction.type === 'decline'
+                pendingOrderAction?.type === 'decline'
               }
             />
           ))}
@@ -189,7 +228,7 @@ export default function DriverOrdersScreen() {
                 </Text>
               </View>
 
-              {fallbackOrders.map((order) => (
+              {fallbackOrders.map((order: AvailableOrder) => (
                 <FallbackOrderCard
                   key={order.id}
                   order={order}
@@ -198,11 +237,11 @@ export default function DriverOrdersScreen() {
                   onDecline={handleDeclineOrder}
                   isAccepting={
                     pendingOrderAction?.orderId === order.id &&
-                    pendingOrderAction.type === 'accept'
+                    pendingOrderAction?.type === 'accept'
                   }
                   isDeclining={
                     pendingOrderAction?.orderId === order.id &&
-                    pendingOrderAction.type === 'decline'
+                    pendingOrderAction?.type === 'decline'
                   }
                 />
               ))}
@@ -255,7 +294,7 @@ function LiveOfferCard({
     <View style={[styles.card, styles.liveOfferCard]}>
       <View style={styles.liveOfferHeader}>
         <View>
-          <Text style={styles.liveOfferEyebrow}>Live Socket Offer</Text>
+          <Text style={styles.liveOfferEyebrow}>Live Socket Offer #{offer.orderId.slice(-6).toUpperCase()}</Text>
           <Text style={styles.cardTitle}>{offer.restaurantName || 'Restaurant'}</Text>
         </View>
         <View style={styles.liveOfferCountdown}>
@@ -328,7 +367,7 @@ function FallbackOrderCard({
       >
         <View style={styles.fallbackHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{order.restaurantName || 'Restaurant'}</Text>
+            <Text style={styles.cardTitle}>{order.restaurantName || 'Restaurant'} (#{order.id.slice(-6).toUpperCase()})</Text>
             <Text style={styles.cardSubtitle}>
               {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} for {order.customerName}
             </Text>
@@ -467,11 +506,14 @@ function OrderDetailModal({
       <View style={styles.modalBackdrop}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="chevron-down" size={28} color={Colors.primary} />
+            <TouchableOpacity 
+              onPress={onClose}
+              style={styles.modalCloseBtn}
+            >
+              <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Order Details</Text>
-            <View style={{ width: 28 }} />
+            <View style={{ width: 40 }} />
           </View>
 
           <ScrollView
@@ -786,6 +828,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 16,

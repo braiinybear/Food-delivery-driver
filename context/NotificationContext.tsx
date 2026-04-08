@@ -11,6 +11,8 @@ import React, {
 } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useRegisterPushToken, useUpdatePushToken } from "@/hooks/useExpoPushNotication";
+import { useSocketStore } from "@/store/useSocketStore";
+import { router } from "expo-router";
 
 interface NotificationContextType {
   pushToken: string | null;
@@ -52,6 +54,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
   const { mutateAsync: registerPushToken } = useRegisterPushToken();
   const { mutateAsync: updatePushToken } = useUpdatePushToken();
+  const addOrderOffer = useSocketStore((state) => state.addOrderOffer);
 
   useEffect(() => {
     let isMounted = true;
@@ -107,16 +110,29 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         console.log("Notification received app is running:", notification);
         setNotification(notification);
       });
+
     responseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        console.log(
-          JSON.stringify(response.notification.request.content.data, null, 2),
-        );
-        console.log(
-          "Notification response received user interacts with notifications:",
-          JSON.stringify(response, null, 2),
-          response,
-        );
+        const data = response.notification.request.content.data;
+        const orderId = data?.orderId as string | undefined;
+
+        console.log("📲 Rider tapped notification, orderId:", orderId);
+
+        if (orderId) {
+          // Add the order to the offer queue so the modal pops up on the home screen
+          addOrderOffer({
+            orderId,
+            restaurantName: (data?.restaurantName as string) || undefined,
+            distanceKm: (data?.distanceKm as number) || undefined,
+            earning: (data?.earning as number) || undefined,
+            receivedAt: Date.now(),
+          });
+
+          // Navigate to the home tab (where the offer modal + active delivery lives)
+          setTimeout(() => {
+            router.navigate("/(tabs)");
+          }, 300);
+        }
       });
 
     return () => {
@@ -128,7 +144,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         responseListener.current.remove();
       }
     };
-  }, [existingPushToken, registerPushToken, session, updatePushToken]);
+  }, [existingPushToken, registerPushToken, session, updatePushToken, addOrderOffer]);
 
   return (
     <NotificationContext.Provider
