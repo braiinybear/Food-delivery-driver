@@ -45,4 +45,4 @@ app-example
 firebase-adminsdk*.json
 google-services.json
 food-delivery-customer-de54a-firebase-adminsdk-fbsvc-ed20b9ebd8.json
-# google-services.json (Temporarily un-ignored for EAS Build)
+google-services.json

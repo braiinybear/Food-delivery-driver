@@ -65,7 +65,7 @@ export default function Register() {
         try {
             await authClient.signIn.social({
                 provider: "google",
-                callbackURL: "food-delivery-driver:///",
+                callbackURL: "fooddeliverydriver:///",
             });
         } catch (err) {
             console.log(err);
