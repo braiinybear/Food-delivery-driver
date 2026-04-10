@@ -141,9 +141,9 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="earnings"
+          name="riderprofile"
           options={{
-            title: "Earnings",
+            title: "Profile",
             headerShown: true,
             headerLeft: () => <BackButton />,
             headerStyle: {
@@ -157,14 +157,8 @@ export default function TabsLayout() {
               color: Colors.white,
             },
             headerTitleAlign: "left",
-            tabBarBadgeStyle: {
-              backgroundColor: Colors.secondary,
-              color: Colors.white,
-              fontSize: 10,
-              top: -2,
-            },
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="cash" color={color} size={size - 2} />
+              <Ionicons name="person" color={color} size={size - 2} />
             ),
           }}
         />
