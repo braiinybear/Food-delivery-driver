@@ -33,6 +33,7 @@ export interface DriverCurrentDeliveryOrder {
     phoneNumber?: string | null;
   } | null;
   items?: Array<unknown>;
+  totalAmount?: number | null;
 }
 
 export interface DriverCurrentDeliveryResponse {

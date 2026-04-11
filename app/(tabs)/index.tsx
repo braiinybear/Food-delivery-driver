@@ -60,6 +60,45 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
   return points;
 }
 
+// ─── Premium Google Maps Style ────────────────────────────────────────────────
+const PREMIUM_MAP_STYLE = [
+    { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+    { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+    { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+    { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
+    { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+    { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+    { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+    { featureType: 'transit.station', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+];
+
+// ─── Haversine ETA calculator (fallback when Google API key is unavailable) ───
+function calculateHaversineEta(
+    lat1: number, lng1: number,
+    lat2: number, lng2: number,
+    avgSpeedKmh: number = 25
+): string {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = R * c * 1.4; // ~1.4x for road distance
+    const etaMinutes = Math.max(2, Math.round((distanceKm / avgSpeedKmh) * 60));
+    return `~${etaMinutes} min`;
+}
+
 function DriverHomeContent() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -206,31 +245,48 @@ function DriverHomeContent() {
     }
   }, [hasActiveDelivery, snapTo]);
 
-  // ─── Fetch route from Google Directions API ───
+  // ─── Fetch route from Google Directions API or OSRM fallback ───
   const fetchRoute = useCallback(async (
     origin: { latitude: number; longitude: number },
     destination: { latitude: number; longitude: number },
   ) => {
-    if (!GOOGLE_MAPS_APIKEY) {
-      setRouteCoords([origin, destination]);
-      setRouteEta(null);
-      return;
-    }
     try {
-      const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_APIKEY}`;
-      const res = await fetch(url);
-      const json = await res.json();
-      if (json.routes?.length > 0) {
-        const route = json.routes[0];
-        setRouteCoords(decodePolyline(route.overview_polyline.points));
-        setRouteEta(route.legs?.[0]?.duration?.text ?? null);
+      if (GOOGLE_MAPS_APIKEY) {
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&mode=driving&key=${GOOGLE_MAPS_APIKEY}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json.routes?.length > 0) {
+          const route = json.routes[0];
+          setRouteCoords(decodePolyline(route.overview_polyline.points));
+          setRouteEta(route.legs?.[0]?.duration?.text ?? null);
+          return;
+        }
+      }
+
+      // Fallback to free OSRM routing if Google API is missing or fails
+      const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline`;
+      const osrmRes = await fetch(osrmUrl);
+      const osrmJson = await osrmRes.json();
+      
+      if (osrmJson.routes?.length > 0) {
+          setRouteCoords(decodePolyline(osrmJson.routes[0].geometry));
+          setRouteEta(calculateHaversineEta(
+            origin.latitude, origin.longitude,
+            destination.latitude, destination.longitude
+          ));
       } else {
-        setRouteCoords([origin, destination]);
-        setRouteEta(null);
+          setRouteCoords([origin, destination]);
+          setRouteEta(calculateHaversineEta(
+            origin.latitude, origin.longitude,
+            destination.latitude, destination.longitude
+          ));
       }
     } catch {
       setRouteCoords([origin, destination]);
-      setRouteEta(null);
+      setRouteEta(calculateHaversineEta(
+        origin.latitude, origin.longitude,
+        destination.latitude, destination.longitude
+      ));
     }
   }, [GOOGLE_MAPS_APIKEY]);
 
@@ -264,9 +320,14 @@ function DriverHomeContent() {
     if (points.length > 1) {
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(points, {
-          edgePadding: { top: 80, right: 60, bottom: SCREEN_HEIGHT * 0.4, left: 60 },
+          edgePadding: { top: 120, right: 60, bottom: SCREEN_HEIGHT * 0.45, left: 60 },
           animated: true,
         });
+
+        // Tilt the camera into 3D isometric view shortly after bounding box completes
+        setTimeout(() => {
+            mapRef.current?.animateCamera({ pitch: 55 });
+        }, 1500);
       }, 400);
     }
   }, [routeData, displayStatus, driverLocation, routeCoords.length]);
@@ -446,8 +507,12 @@ function DriverHomeContent() {
             style={StyleSheet.absoluteFillObject}
             showsUserLocation={false}
             showsMyLocationButton={false}
+            showsBuildings={true}
+            pitchEnabled={true}
+            userInterfaceStyle="light"
             showsCompass={false}
             toolbarEnabled={false}
+            customMapStyle={PREMIUM_MAP_STYLE}
             initialRegion={{
               latitude: driverLocation.lat,
               longitude: driverLocation.lng,
@@ -664,11 +729,62 @@ function DriverHomeContent() {
                   <Text style={styles.infoValue}>{activeDelivery.customer?.name || "Customer"}</Text>
                 </View>
                 <View style={styles.divider} />
+                
+                {/* ─── Call Customer Button ─── */}
+                <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Contact</Text>
+                    <TouchableOpacity
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.success, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 }}
+                      onPress={() => {
+                        if (activeDelivery.customer?.phoneNumber) {
+                          Linking.openURL(`tel:${activeDelivery.customer.phoneNumber}`); 
+                        } else {
+                          Alert.alert("Error", "Customer phone number not available.");
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="call" size={14} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontFamily: Fonts.brandBold, fontSize: 12 }}>Call Customer</Text>
+                    </TouchableOpacity>
+                </View>
+                <View style={styles.divider} />
+
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Restaurant</Text>
                   <Text style={styles.infoValue}>{activeDelivery.restaurant?.name || "Restaurant"}</Text>
                 </View>
                 <View style={styles.divider} />
+
+                {/* ─── Order Items ─── */}
+                {activeDelivery.items && activeDelivery.items.length > 0 && (
+                  <>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Items</Text>
+                      <View style={{ alignItems: 'flex-end', flex: 1, paddingLeft: 16 }}>
+                        {activeDelivery.items.map((item: any, idx: number) => (
+                          <Text key={idx} style={[styles.infoValue, { fontSize: 13, marginBottom: 2 }]} numberOfLines={1}>
+                            {item.quantity}x {item.menuItem?.name || 'Item'}
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                    <View style={styles.divider} />
+                  </>
+                )}
+
+                {/* ─── Order Total ─── */}
+                {activeDelivery.totalAmount ? (
+                  <>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Bill Amount</Text>
+                      <Text style={[styles.infoValue, { color: Colors.success, fontFamily: Fonts.brandBlack, fontSize: 16 }]}>
+                        ₹{activeDelivery.totalAmount.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.divider} />
+                  </>
+                ) : null}
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Status</Text>
                   <View style={styles.statusChip}>
