@@ -13,6 +13,7 @@ import { authClient } from "@/lib/auth-client";
 import { useRegisterPushToken, useUpdatePushToken } from "@/hooks/useExpoPushNotication";
 import { useSocketStore } from "@/store/useSocketStore";
 import { router } from "expo-router";
+import apiClient from "@/lib/axios";
 
 interface NotificationContextType {
   pushToken: string | null;
@@ -61,8 +62,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
 
     const setupNotifications = async () => {
       try {
-        // Check and request notification permissions if not granted
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
 
         if (existingStatus !== "granted") {
@@ -71,29 +72,26 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
         }
 
         if (finalStatus !== "granted") {
-          console.log("⚠️ Notification permission not granted");
+          console.log("Notification permission not granted");
           return;
         }
 
         const token = await registerForPushNotificationsAsync();
-        
+
         if (!isMounted) return;
 
         if (token) {
           setExpoPushToken(token);
           try {
-            // First time opening app - register token
             if (!existingPushToken) {
               await registerPushToken({ token });
-              console.log("✅ Push token registered with backend");
-            }
-            // Token changed on subsequent opens - update token
-            else if (existingPushToken !== token) {
+              console.log("Push token registered with backend");
+            } else if (existingPushToken !== token) {
               await updatePushToken({ token });
-              console.log("✅ Push token updated with backend");
+              console.log("Push token updated with backend");
             }
           } catch (err) {
-            console.log("❌ Failed to sync push token:", err);
+            console.log("Failed to sync push token:", err);
           }
         }
       } catch (err) {
@@ -101,6 +99,17 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
           setError(err instanceof Error ? err : new Error(String(err)));
         }
       }
+    };
+
+    const validateOfferStillAvailable = async (orderId: string) => {
+      const { data: availableOrders } = await apiClient.get(
+        "/delivery/available-orders",
+      );
+      const ordersList = Array.isArray(availableOrders)
+        ? availableOrders
+        : (availableOrders as { data?: Array<{ id?: string }> }).data || [];
+
+      return ordersList.some((order) => order?.id === orderId);
     };
 
     setupNotifications();
@@ -112,26 +121,60 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       });
 
     responseListener.current =
-      Notifications.addNotificationResponseReceivedListener((response) => {
+      Notifications.addNotificationResponseReceivedListener(async (response) => {
         const data = response.notification.request.content.data;
         const orderId = data?.orderId as string | undefined;
+        const type = data?.type as string | undefined;
+        const offerExpiresAtRaw = data?.offerExpiresAt;
+        const offerExpiresAt =
+          typeof offerExpiresAtRaw === "number"
+            ? offerExpiresAtRaw
+            : typeof offerExpiresAtRaw === "string"
+              ? Number(offerExpiresAtRaw)
+              : NaN;
 
-        console.log("📲 Rider tapped notification, orderId:", orderId);
+        console.log("Rider tapped notification:", { type, orderId });
 
-        if (orderId) {
-          // Add the order to the offer queue so the modal pops up on the home screen
+        if (type !== "ORDER_OFFER" || !orderId) {
+          return;
+        }
+
+        if (Number.isFinite(offerExpiresAt) && offerExpiresAt <= Date.now()) {
+          console.log("Ignoring expired order offer notification:", orderId);
+          return;
+        }
+
+        try {
+          const isStillAvailable = await validateOfferStillAvailable(orderId);
+
+          if (!isStillAvailable) {
+            console.log("Ignoring stale order offer notification:", orderId);
+            return;
+          }
+
           addOrderOffer({
             orderId,
             restaurantName: (data?.restaurantName as string) || undefined,
-            distanceKm: (data?.distanceKm as number) || undefined,
-            earning: (data?.earning as number) || undefined,
+            distanceKm:
+              typeof data?.distanceKm === "number"
+                ? data.distanceKm
+                : typeof data?.distanceKm === "string"
+                  ? Number(data.distanceKm)
+                  : undefined,
+            earning:
+              typeof data?.earning === "number"
+                ? data.earning
+                : typeof data?.earning === "string"
+                  ? Number(data.earning)
+                  : undefined,
             receivedAt: Date.now(),
           });
 
-          // Navigate to the home tab (where the offer modal + active delivery lives)
           setTimeout(() => {
             router.navigate("/(tabs)");
           }, 300);
+        } catch (err) {
+          console.log("Failed to validate push order offer:", err);
         }
       });
 
