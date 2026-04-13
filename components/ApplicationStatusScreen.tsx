@@ -6,7 +6,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { showAlert } from "@/store/useAlertStore";
 
 type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -79,7 +79,7 @@ export default function ApplicationStatusScreen() {
           message: `Unfortunately, your delivery partner application was not approved at this time. You can contact our support team for more details or apply again later with updated information.`,
           primaryButtonText: "Contact Support",
           primaryButtonAction: () => {
-            Alert.alert(
+            showAlert(
               "Contact Support",
               "Please reach out to our support team via:\n\nEmail: support@fooddelivery.com\nPhone: +1-800-123-4567",
             );

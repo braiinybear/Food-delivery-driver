@@ -23,6 +23,7 @@ import { NotificationProvider } from "@/context/NotificationContext";
 import { initSocket } from "@/lib/socket-client";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useSocketOrderOffers } from "@/hooks/useSocketOrders";
+import GlobalCustomAlert from "@/components/GlobalCustomAlert";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -153,7 +154,7 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="driverform"
-                options={{ headerShown: false }}
+                options={{ headerShown:true,headerTitle:"Driver Form",headerTintColor:"#fff",headerStyle:{backgroundColor:Colors.primary},headerTitleAlign:"center",headerTitleStyle:{color:"#fff"} }}
               />
               <Stack.Screen
                 name="riderprofile"
@@ -173,6 +174,7 @@ export default function RootLayout() {
             </Stack.Protected>
           </Stack>
         </View>
+          <GlobalCustomAlert />
          </NotificationProvider>
       </QueryClientProvider>
    

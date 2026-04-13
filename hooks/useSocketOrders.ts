@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { showAlert } from '@/store/useAlertStore';
 import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 import { useQueryClient } from '@tanstack/react-query';
@@ -85,7 +86,7 @@ export function useSocketOrderOffers() {
         ['DELIVERED', 'CANCELLED', 'REFUSED'].includes(data.status)
       ) {
         if (data.status === 'CANCELLED' || data.status === 'REFUSED') {
-          Alert.alert(
+          showAlert(
             'Order Update', 
             `Order #${data.orderId.slice(-6)} has been ${data.status.toLowerCase()}.`
           );
@@ -104,7 +105,7 @@ export function useSocketOrderOffers() {
       // Instant switch to Home/Map
       router.replace('/(tabs)');
       
-      Alert.alert(
+      showAlert(
         'New Assignment 🚚',
         'An order has been assigned to you. Navigation started.'
       );
@@ -113,7 +114,7 @@ export function useSocketOrderOffers() {
     const handleOrderCancelledByOthers = (data: { orderId: string; reason: string }) => {
       console.log('[Driver] Order VOIDED by others:', data);
       if (acceptedOrderId === data.orderId) {
-        Alert.alert(
+        showAlert(
           'Order VOIDED ❌',
           `Order #${data.orderId.slice(-6)} was cancelled. Reason: ${data.reason || 'Not provided'}`
         );

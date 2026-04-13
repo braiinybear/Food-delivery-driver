@@ -10,8 +10,8 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
 } from 'react-native';
+import { showAlert } from '@/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -96,7 +96,7 @@ export default function DriverOrdersScreen() {
     (orderId: string) => {
       // Defensive check: Prevent acceptance if already on a delivery
       if (activeDeliveryData?.order) {
-        Alert.alert(
+        showAlert(
           "Already on Delivery",
           "Please complete your current delivery before accepting a new one."
         );
@@ -119,7 +119,7 @@ export default function DriverOrdersScreen() {
         },
         onError: (err: any) => {
           setPendingOrderAction(null);
-          Alert.alert(
+          showAlert(
             "Order Unavailable",
             err.response?.data?.message || "This order may have been taken by another rider or cancelled.",
             [{ text: "OK", onPress: () => refetch() }]

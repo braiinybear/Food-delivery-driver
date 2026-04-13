@@ -3,13 +3,13 @@ import { Fonts, FontSize } from "@/constants/typography";
 import { useApplyDeliveryPartner } from "@/hooks/useDeliveryPartnerRequest";
 import { usePartnerStore } from "@/store/userider";
 import { uploadImageToCloudinary, validateImage } from "@/utility/cloudinary";
+import { showAlert } from "@/store/useAlertStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -22,7 +22,7 @@ import {
   View,
 } from "react-native";
 
-const VEHICLE_TYPES = ["Bike", "Scooter", "Car"];
+const VEHICLE_TYPES = ["Bike", "Scooter"];
 
 // ─── Driver Application Form Screen ────────────────────────────────────────────
 export default function DriverFormScreen() {
@@ -58,7 +58,7 @@ export default function DriverFormScreen() {
         try {
           await validateImage(imageUri, 5); // 5MB max
         } catch (validationError) {
-          Alert.alert(
+          showAlert(
             "Invalid Image",
             validationError instanceof Error
               ? validationError.message
@@ -93,13 +93,13 @@ export default function DriverFormScreen() {
           setImageUrl(response.secure_url);
 
           // ─── Show success message ──────────────────────────────────
-          Alert.alert(
+          showAlert(
             "Success! ✅",
             "Image uploaded to cloud successfully",
             [{ text: "OK" }],
           );
         } catch (uploadError) {
-          Alert.alert(
+          showAlert(
             "Upload Failed ❌",
             uploadError instanceof Error
               ? uploadError.message
@@ -112,7 +112,7 @@ export default function DriverFormScreen() {
         }
       }
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Error",
         error instanceof Error ? error.message : "An error occurred",
         [{ text: "OK" }],
@@ -136,7 +136,7 @@ export default function DriverFormScreen() {
         try {
           await validateImage(imageUri, 3); // 3MB max for profile
         } catch (validationError) {
-          Alert.alert(
+          showAlert(
             "Invalid Image",
             validationError instanceof Error
               ? validationError.message
@@ -174,13 +174,13 @@ export default function DriverFormScreen() {
           setProfilePicUrl(response.secure_url);
 
           // ─── Show success message ──────────────────────────────────
-          Alert.alert(
+          showAlert(
             "Success! ✅",
             "Profile picture updated successfully",
             [{ text: "OK" }],
           );
         } catch (uploadError) {
-          Alert.alert(
+          showAlert(
             "Upload Failed ❌",
             uploadError instanceof Error
               ? uploadError.message
@@ -193,7 +193,7 @@ export default function DriverFormScreen() {
         }
       }
     } catch (error) {
-      Alert.alert(
+      showAlert(
         "Error",
         error instanceof Error ? error.message : "An error occurred",
         [{ text: "OK" }],
@@ -203,29 +203,29 @@ export default function DriverFormScreen() {
 
   const validateForm = () => {
     if (!licenseNumber.trim()) {
-      Alert.alert("Missing Info", "Please enter your license number");
+      showAlert("Missing Info", "Please enter your license number");
       return false;
     }
     if (!vehiclePlate.trim()) {
-      Alert.alert("Missing Info", "Please enter your vehicle plate number");
+      showAlert("Missing Info", "Please enter your vehicle plate number");
       return false;
     }
     if (!licenseFrontUrl) {
-      Alert.alert(
+      showAlert(
         "Missing Document",
         "Please upload the front side of your license",
       );
       return false;
     }
     if (!licenseBackUrl) {
-      Alert.alert(
+      showAlert(
         "Missing Document",
         "Please upload the back side of your license",
       );
       return false;
     }
     if (!vehicleRcUrl) {
-      Alert.alert(
+      showAlert(
         "Missing Document",
         "Please upload your vehicle registration certificate",
       );
@@ -250,7 +250,7 @@ export default function DriverFormScreen() {
       {
         onSuccess: (data) => {
           setAppliedForRider(true);
-          Alert.alert(
+          showAlert(
             "Application Submitted! 🎉",
             `Your delivery partner application has been submitted.\n\nStatus: ${data.status}\nVehicle: ${data.vehicleType}\n\nOur team will review and get back to you within 24-48 hours.`,
             [
@@ -263,14 +263,14 @@ export default function DriverFormScreen() {
         },
         onError: (error: any) => {
           if (error?.response?.status === 409) {
-            Alert.alert(
+            showAlert(
               "Application Already Exists",
               "You already have an existing delivery partner application. Please check back soon!",
               [{ text: "OK" }],
             );
             setAppliedForRider(true);
           } else {
-            Alert.alert(
+            showAlert(
               "Submission Failed",
               error?.response?.data?.message ||
                 "Failed to submit application. Please try again.",
@@ -363,15 +363,6 @@ export default function DriverFormScreen() {
           </View>
         </View>
       )}
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={Colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Driver Information</Text>
-        <View style={{ width: 24 }} />
-      </View>
 
       {/* Body */}
       <KeyboardAvoidingView
@@ -759,6 +750,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     marginTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: Colors.primary,
   },
   backBtn: {
     width: 40,

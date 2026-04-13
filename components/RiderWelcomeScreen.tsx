@@ -4,18 +4,20 @@ import { authClient } from "@/lib/auth-client";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Welcome / Delivery Partner Onboarding Screen ──────────────────────────────
 export function RiderWelcomeScreen() {
     const { data: session } = authClient.useSession();
     const firstName = session?.user?.name?.split(" ")[0] ?? "Partner";
+    const insets = useSafeAreaInsets();
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
             {/* Top curved background */}
-            <View style={styles.topBg}>
+            <View style={[styles.topBg, { paddingTop: insets.top + 20 }]}>
                 <View style={styles.iconCircle}>
                     <Ionicons name="bicycle" size={52} color={Colors.white} />
                 </View>
@@ -78,24 +80,6 @@ export function RiderWelcomeScreen() {
                     </View>
                 </View>
 
-                {/* Stats strip */}
-                <View style={styles.statsStrip}>
-                    <View style={styles.stat}>
-                        <Text style={styles.statNum}>2.5K+</Text>
-                        <Text style={styles.statLbl}>Active Riders</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.stat}>
-                        <Text style={styles.statNum}>₹500/day</Text>
-                        <Text style={styles.statLbl}>Avg Earnings</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.stat}>
-                        <Text style={styles.statNum}>4.7 ⭐</Text>
-                        <Text style={styles.statLbl}>Avg Rating</Text>
-                    </View>
-                </View>
-
                 {/* CTA Button */}
                 <TouchableOpacity
                     style={styles.ctaBtn}
@@ -104,14 +88,6 @@ export function RiderWelcomeScreen() {
                 >
                     <Ionicons name="checkmark-circle-outline" size={22} color={Colors.white} />
                     <Text style={styles.ctaBtnText}>Start Earning Now</Text>
-                </TouchableOpacity>
-
-                {/* Secondary CTA */}
-                <TouchableOpacity
-                    style={styles.secondaryBtn}
-                    activeOpacity={0.75}
-                >
-                    <Text style={styles.secondaryBtnText}>Learn More</Text>
                 </TouchableOpacity>
                 <Text style={styles.footerNote}>
                     Quick verification. Start delivering within 24 hours! 🚀
@@ -128,7 +104,6 @@ const styles = StyleSheet.create({
     },
     topBg: {
         backgroundColor: Colors.primary,
-        paddingTop: 60,
         paddingBottom: 60,
         alignItems: "center",
         borderBottomLeftRadius: 36,

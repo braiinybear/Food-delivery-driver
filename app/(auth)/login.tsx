@@ -1,12 +1,12 @@
 import { Colors } from "@/constants/colors";
 import { Fonts, FontSize } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
+import { showAlert } from "@/store/useAlertStore";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -40,7 +40,7 @@ export default function Login() {
     // ── Phone OTP ──────────────────────────────────────────────
     const handleSendOtp = async () => {
         if (!phone || phone.length < 10) {
-            Alert.alert("Error", "Please enter a valid phone number");
+            showAlert("Error", "Please enter a valid phone number");
             return;
         }
         setOtpLoading(true);
@@ -48,7 +48,7 @@ export default function Login() {
             await authClient.phoneNumber.sendOtp({ phoneNumber: phone });
             setStep("otp");
         } catch (err: any) {
-            Alert.alert("Error", err?.message ?? "Failed to send OTP");
+            showAlert("Error", err?.message ?? "Failed to send OTP");
         } finally {
             setOtpLoading(false);
         }
@@ -56,7 +56,7 @@ export default function Login() {
 
     const handleVerifyOtp = async () => {
         if (!otp || otp.length < 6) {
-            Alert.alert("Error", "Please enter the OTP");
+            showAlert("Error", "Please enter the OTP");
             return;
         }
         setVerifyLoading(true);
@@ -76,12 +76,12 @@ export default function Login() {
                         router.replace("/");
                     },
                     onError: (ctx) => {
-                        Alert.alert("Verification Failed", ctx.error.message);
+                        showAlert("Verification Failed", ctx.error.message);
                     }
                 }
             );
         } catch (err: any) {
-            Alert.alert("Error", err?.message ?? "Verification failed");
+            showAlert("Error", err?.message ?? "Verification failed");
         } finally {
             setVerifyLoading(false);
         }
@@ -90,7 +90,7 @@ export default function Login() {
     // ── Email / Password ───────────────────────────────────────
     const handleEmailLogin = async () => {
         if (!email || !password) {
-            Alert.alert("Error", "Please fill in all fields");
+            showAlert("Error", "Please fill in all fields");
             return;
         }
 
@@ -126,12 +126,12 @@ export default function Login() {
                         router.replace("/");
                     } else {
                         console.error("❌ Failed to extract token from headers or body");
-                        Alert.alert("Login Error", "Could not retrieve session token.");
+                        showAlert("Login Error", "Could not retrieve session token.");
                     }
                 },
                 onError: (ctx: any) => {
                     setEmailLoading(false);
-                    Alert.alert("Login Failed", ctx.error.message);
+                    showAlert("Login Failed", ctx.error.message);
                 },
             }
         );

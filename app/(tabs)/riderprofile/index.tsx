@@ -4,7 +4,6 @@ import React from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Platform,
   ScrollView,
@@ -18,6 +17,7 @@ import { Colors } from "@/constants/colors";
 import { FontSize, Fonts } from "@/constants/typography";
 import { useDeliveryProfile } from "@/hooks/useRiderInfo";
 import { authClient } from "@/lib/auth-client";
+import { showAlert } from "@/store/useAlertStore";
 
 export default function RiderProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -190,7 +190,7 @@ export default function RiderProfileScreen() {
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => {
-              Alert.alert("Edit Profile", "Edit profile feature coming soon");
+              showAlert("Edit Profile", "Edit profile feature coming soon");
             }}
           >
             <View style={styles.actionIconBg}>
@@ -209,7 +209,7 @@ export default function RiderProfileScreen() {
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => {
-              Alert.alert(
+              showAlert(
                 "Vehicle Details",
                 "Vehicle details management coming soon"
               );
@@ -235,7 +235,7 @@ export default function RiderProfileScreen() {
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => {
-              Alert.alert("Documents", "Upload and manage your documents");
+              showAlert("Documents", "Upload and manage your documents");
             }}
           >
             <View style={styles.actionIconBg}>
@@ -259,7 +259,7 @@ export default function RiderProfileScreen() {
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => {
-              Alert.alert("Support", "Contact support coming soon");
+              showAlert("Support", "Contact support coming soon");
             }}
           >
             <View style={styles.actionIconBg}>
@@ -282,7 +282,7 @@ export default function RiderProfileScreen() {
             style={styles.actionButton}
             activeOpacity={0.7}
             onPress={() => {
-              Alert.alert("Logout", "Are you sure you want to logout?", [
+              showAlert("Logout", "Are you sure you want to logout?", [
                 {
                   text: "Cancel",
                   onPress: () => {},

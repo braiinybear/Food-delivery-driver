@@ -1,12 +1,12 @@
 import { Colors } from "@/constants/colors";
 import { Fonts, FontSize } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
+import { showAlert } from "@/store/useAlertStore";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import * as SecureStore from "expo-secure-store";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -28,7 +28,7 @@ export default function Register() {
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
-            Alert.alert("Error", "Please fill in all fields");
+            showAlert("Error", "Please fill in all fields");
             return;
         }
 
@@ -49,13 +49,13 @@ export default function Register() {
                     }
 
                     setIsLoading(false);
-                    Alert.alert("Success", "Account created successfully", [
+                    showAlert("Success", "Account created successfully", [
                         { text: "OK", onPress: () => router.replace("/") }
                     ]);
                 },
                 onError: (ctx: any) => {
                     setIsLoading(false);
-                    Alert.alert("Registration Failed", ctx.error.message);
+                    showAlert("Registration Failed", ctx.error.message);
                 },
             }
         );

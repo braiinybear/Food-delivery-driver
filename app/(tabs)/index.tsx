@@ -2,9 +2,9 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { usePartnerStore } from "@/store/userider";
+import { showAlert } from "@/store/useAlertStore";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   PanResponder,
   ScrollView,
@@ -344,7 +344,7 @@ function DriverHomeContent() {
         queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
         queryClient.invalidateQueries({ queryKey: ['delivery-profile'] });
         snapTo(SNAP_BOTTOM);
-        Alert.alert(
+        showAlert(
           "Order Cancelled ❌",
           payload.reason || "This order was cancelled by the customer or restaurant. Your status has been reset to ONLINE."
         );
@@ -388,11 +388,11 @@ function DriverHomeContent() {
           queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
           queryClient.invalidateQueries({ queryKey: ['delivery-profile'] });
           snapTo(SNAP_BOTTOM);
-          Alert.alert("Success", "Delivery completed successfully! Great job.");
+          showAlert("Success", "Delivery completed successfully! Great job.");
         },
         onError: (err: any) => {
           const message = err.response?.data?.message || "Could not complete delivery. Please check the OTP.";
-          Alert.alert("Delivery Failed", message);
+          showAlert("Delivery Failed", message);
         }
       },
     );
@@ -402,11 +402,11 @@ function DriverHomeContent() {
     if (!activeOrderId || isPickingUp) return;
     pickupDelivery(activeOrderId, {
       onSuccess: () => {
-        Alert.alert("Success", "Order picked up! You can now start navigating to the customer.");
+        showAlert("Success", "Order picked up! You can now start navigating to the customer.");
       },
       onError: (err: any) => {
         const message = err.response?.data?.message || "Failed to confirm pickup.";
-        Alert.alert("Pickup Failed", message);
+        showAlert("Pickup Failed", message);
       }
     });
   };
@@ -418,14 +418,14 @@ function DriverHomeContent() {
     if (destLat && destLng) {
       Linking.openURL(`https://maps.google.com/maps?daddr=${destLat},${destLng}&directionsmode=driving`);
     } else {
-      Alert.alert("Location Error", "Could not load exact destination coordinates.");
+      showAlert("Location Error", "Could not load exact destination coordinates.");
     }
   };
 
   const handleCancelActiveDelivery = () => {
     if (!activeOrderId || isCancellingDelivery) return;
 
-    Alert.alert(
+    showAlert(
       "Cancel delivery?",
       "This will release the order and send it back for another rider.",
       [
@@ -439,11 +439,11 @@ function DriverHomeContent() {
                 setOtp("");
                 setAcceptedOrder(null);
                 snapTo(SNAP_BOTTOM);
-                Alert.alert("Cancelled", "Delivery has been released.");
+                showAlert("Cancelled", "Delivery has been released.");
               },
               onError: (err: any) => {
                 const message = err.response?.data?.message || "Failed to cancel delivery.";
-                Alert.alert("Cancel Failed", message);
+                showAlert("Cancel Failed", message);
               }
             });
           },
@@ -459,7 +459,7 @@ function DriverHomeContent() {
         setAcceptedOrder(orderId);
       },
       onError: (err: any) => {
-        Alert.alert("Accept Failed", err.response?.data?.message || "Order is no longer available.");
+        showAlert("Accept Failed", err.response?.data?.message || "Order is no longer available.");
         removeOrderOffer(orderId);
       }
     });
@@ -739,7 +739,7 @@ function DriverHomeContent() {
                         if (activeDelivery.customer?.phoneNumber) {
                           Linking.openURL(`tel:${activeDelivery.customer.phoneNumber}`); 
                         } else {
-                          Alert.alert("Error", "Customer phone number not available.");
+                          showAlert("Error", "Customer phone number not available.");
                         }
                       }}
                       activeOpacity={0.8}
@@ -911,16 +911,16 @@ export default function HomeScreen() {
     return (
       <>
         <Tabs.Screen options={{ tabBarStyle: { display: "none" } }} />
-        <SafeAreaView style={{ flex: 1, paddingTop: insets.top }}>
+        <View style={{ flex: 1, backgroundColor: Colors.surface }}>
           <RiderWelcomeScreen />
-        </SafeAreaView>
+        </View>
       </>
     );
   } else if (appliedForRider) {
     return (
       <>
         <Tabs.Screen options={{ tabBarStyle: { display: "none" } }} />
-        <SafeAreaView style={{ flex: 1, paddingTop: insets.top }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
           <ApplicationStatusScreen />
         </SafeAreaView>
       </>

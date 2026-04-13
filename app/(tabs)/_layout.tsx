@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../../constants/colors";
-import DriverOrderOfferModal from "../../components/DriverOrderOfferModal";
+
 import { useAcceptDelivery, useDeclineDelivery } from "../../hooks/useDriverDeliveries";
 import { useSocketStore } from "../../store/useSocketStore";
 
@@ -192,14 +192,7 @@ export default function TabsLayout() {
         />
       </Tabs>
 
-      <DriverOrderOfferModal
-        offer={activeOffer}
-        isAccepting={pendingOfferAction?.orderId === activeOffer?.orderId && pendingOfferAction?.type === "accept"}
-        isDeclining={pendingOfferAction?.orderId === activeOffer?.orderId && pendingOfferAction?.type === "decline"}
-        onAccept={handleAcceptOffer}
-        onDecline={handleDeclineOffer}
-        onExpire={removeOrderOffer}
-      />
+
     </View>
   );
 }
