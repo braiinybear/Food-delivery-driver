@@ -103,6 +103,7 @@ function DriverHomeContent() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [otp, setOtp] = useState("");
+  const [cashConfirmed, setCashConfirmed] = useState(false);
   const mapRef = useRef<MapView>(null);
   const [driverLocation, setDriverLocation] = useState<{lat: number, lng: number} | null>(null);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -379,16 +380,30 @@ function DriverHomeContent() {
     const normalizedOtp = otp.trim();
     if (!activeOrderId || normalizedOtp.length < 4) return;
 
+    const isCOD = activeDelivery?.paymentMode === 'COD';
+    const cashAmount = activeDelivery?.totalAmount ?? 0;
+    const driverEarnings = (activeDelivery as any)?.deliveryCharge + (activeDelivery as any)?.driverTip || 0;
+    const cashToRemit = cashAmount - driverEarnings;
+
     completeDelivery(
       { orderId: activeOrderId, otp: normalizedOtp },
       {
         onSuccess: () => {
           setOtp("");
+          setCashConfirmed(false);
           setAcceptedOrder(null);
           queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
           queryClient.invalidateQueries({ queryKey: ['delivery-profile'] });
+          queryClient.invalidateQueries({ queryKey: ['driver-earnings'] });
           snapTo(SNAP_BOTTOM);
-          showAlert("Success", "Delivery completed successfully! Great job.");
+          if (isCOD && cashToRemit > 0) {
+            showAlert(
+              "Delivery Complete ✅",
+              `Great job! ₹${cashToRemit.toFixed(0)} has been debited from your wallet as the collected cash that belongs to the platform/restaurant. You keep ₹${(cashAmount - cashToRemit).toFixed(0)} as your earning.`
+            );
+          } else {
+            showAlert("Success", "Delivery completed successfully! Great job.");
+          }
         },
         onError: (err: any) => {
           const message = err.response?.data?.message || "Could not complete delivery. Please check the OTP.";
@@ -685,22 +700,98 @@ function DriverHomeContent() {
             )}
           </View>
 
-          {/* ─── Quick Stats (when no delivery) ─── */}
+          {/* ─── Premium Earnings Dashboard (when no delivery) ─── */}
           {!activeDelivery && !earningsLoading && earnings && (
-            <View style={styles.earningsGrid}>
-              <View style={styles.earningsCard}>
-                <View style={[styles.earningsIconBg, { backgroundColor: Colors.success + '18' }]}>
-                  <Ionicons name="checkmark-done" size={20} color={Colors.success} />
+            <View style={styles.dashboardContainer}>
+              {/* ── Hero: Today's Earnings Card ── */}
+              <View style={styles.heroEarningsCard}>
+                <View style={styles.heroCardBg}>
+                  <View style={styles.heroTopRow}>
+                    <View>
+                      <Text style={styles.heroLabel}>Today's Earnings</Text>
+                      <Text style={styles.heroAmount}>₹{(earnings.todayEarnings || 0).toFixed(0)}</Text>
+                    </View>
+                    <View style={styles.heroIconCircle}>
+                      <Ionicons name="trending-up" size={26} color="#FFF" />
+                    </View>
+                  </View>
+                  <View style={styles.heroBreakdownRow}>
+                    <View style={styles.heroBreakdownItem}>
+                      <Ionicons name="bicycle-outline" size={14} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.heroBreakdownText}>₹{(earnings.todayDeliveryPay || 0).toFixed(0)} delivery</Text>
+                    </View>
+                    <View style={styles.heroBreakdownDivider} />
+                    <View style={styles.heroBreakdownItem}>
+                      <Ionicons name="heart-outline" size={14} color="rgba(255,255,255,0.8)" />
+                      <Text style={styles.heroBreakdownText}>₹{(earnings.todayTips || 0).toFixed(0)} tips</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.earningsValue}>{earnings.totalDeliveries || 0}</Text>
-                <Text style={styles.earningsLabel}>Deliveries</Text>
               </View>
-              <View style={styles.earningsCard}>
-                <View style={[styles.earningsIconBg, { backgroundColor: Colors.secondary + '18' }]}>
-                  <Ionicons name="star" size={20} color={Colors.secondary} />
+
+              {/* ── Quick Stats Grid ── */}
+              <View style={styles.statsGrid}>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIconBg, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="today-outline" size={18} color={Colors.success} />
+                  </View>
+                  <Text style={styles.statValue}>{earnings.todayDeliveries || 0}</Text>
+                  <Text style={styles.statLabel}>Today</Text>
                 </View>
-                <Text style={styles.earningsValue}>{(earnings.rating || 0).toFixed(1)}</Text>
-                <Text style={styles.earningsLabel}>Rating</Text>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIconBg, { backgroundColor: '#FFF3E0' }]}>
+                    <Ionicons name="calendar-outline" size={18} color={Colors.warning} />
+                  </View>
+                  <Text style={styles.statValue}>{earnings.weeklyDeliveries || 0}</Text>
+                  <Text style={styles.statLabel}>This Week</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIconBg, { backgroundColor: '#FFF8E1' }]}>
+                    <Ionicons name="star" size={18} color={Colors.secondary} />
+                  </View>
+                  <Text style={styles.statValue}>{(earnings.rating || 0).toFixed(1)}</Text>
+                  <Text style={styles.statLabel}>{earnings.ratingCount || 0} ratings</Text>
+                </View>
+                <View style={styles.statCard}>
+                  <View style={[styles.statIconBg, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="checkmark-done" size={18} color="#1976D2" />
+                  </View>
+                  <Text style={styles.statValue}>{earnings.totalDeliveries || 0}</Text>
+                  <Text style={styles.statLabel}>Lifetime</Text>
+                </View>
+              </View>
+
+              {/* ── Wallet & Weekly Earnings Row ── */}
+              <View style={styles.walletWeeklyRow}>
+                <View style={styles.walletCard}>
+                  <View style={styles.walletLeft}>
+                    <View style={styles.walletIconCircle}>
+                      <Ionicons name="wallet-outline" size={18} color={Colors.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.walletLabel}>Wallet Balance</Text>
+                      <Text style={styles.walletAmount}>₹{(earnings.walletBalance || 0).toFixed(0)}</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={Colors.muted} />
+                </View>
+              </View>
+
+              <View style={styles.walletWeeklyRow}>
+                <View style={styles.weeklyCard}>
+                  <View style={styles.walletLeft}>
+                    <View style={[styles.walletIconCircle, { backgroundColor: Colors.warning + '15' }]}>
+                      <Ionicons name="bar-chart-outline" size={18} color={Colors.warning} />
+                    </View>
+                    <View>
+                      <Text style={styles.walletLabel}>This Week</Text>
+                      <Text style={styles.walletAmount}>₹{(earnings.weeklyEarnings || 0).toFixed(0)}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.weeklyBadge}>
+                    <Text style={styles.weeklyBadgeText}>{earnings.weeklyDeliveries || 0} orders</Text>
+                  </View>
+                </View>
               </View>
             </View>
           )}
@@ -715,6 +806,13 @@ function DriverHomeContent() {
                      <Ionicons name="navigate" size={18} color={Colors.primary} />
                    </View>
                    <Text style={styles.cardTitle}>Active Delivery</Text>
+                   {/* COD Badge */}
+                   {activeDelivery.paymentMode === 'COD' && (
+                     <View style={styles.codBadge}>
+                       <Ionicons name="cash-outline" size={11} color="#7B4F00" />
+                       <Text style={styles.codBadgeText}>CASH</Text>
+                     </View>
+                   )}
                 </View>
                 <TouchableOpacity onPress={handleNavigate} style={styles.navigateBtn} activeOpacity={0.8}>
                    <Ionicons name="compass" size={15} color="#FFF" />
@@ -785,6 +883,20 @@ function DriverHomeContent() {
                     <View style={styles.divider} />
                   </>
                 ) : null}
+                {/* ─── COD Cash Collection Banner (shown when ON_THE_WAY) ─── */}
+                {activeDelivery.paymentMode === 'COD' && displayStatus === 'ON_THE_WAY' && activeDelivery.totalAmount ? (
+                  <View style={styles.codBanner}>
+                    <View style={styles.codBannerLeft}>
+                      <Ionicons name="cash" size={22} color="#7B4F00" />
+                      <View>
+                        <Text style={styles.codBannerTitle}>Collect Cash from Customer</Text>
+                        <Text style={styles.codBannerAmount}>₹{activeDelivery.totalAmount.toFixed(0)}</Text>
+                      </View>
+                    </View>
+                    <Ionicons name="alert-circle" size={18} color="#7B4F00" />
+                  </View>
+                ) : null}
+
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Status</Text>
                   <View style={styles.statusChip}>
@@ -843,6 +955,25 @@ function DriverHomeContent() {
                   </TouchableOpacity>
                 ) : (
                   <View style={{ gap: 12 }}>
+                    {/* COD: Cash confirmation checkbox */}
+                    {activeDelivery.paymentMode === 'COD' && (
+                      <TouchableOpacity
+                        style={styles.cashConfirmRow}
+                        onPress={() => setCashConfirmed(prev => !prev)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[styles.checkbox, cashConfirmed && styles.checkboxChecked]}>
+                          {cashConfirmed && <Ionicons name="checkmark" size={13} color="#FFF" />}
+                        </View>
+                        <Text style={styles.cashConfirmText}>
+                          I have collected{' '}
+                          <Text style={{ fontFamily: Fonts.brandBold, color: Colors.text }}>
+                            ₹{(activeDelivery.totalAmount ?? 0).toFixed(0)}
+                          </Text>{' '}cash from the customer
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
                     <Text style={styles.otpLabel}>Enter Delivery OTP</Text>
                     <TextInput
                       value={otp}
@@ -851,16 +982,20 @@ function DriverHomeContent() {
                       placeholderTextColor={Colors.muted}
                       keyboardType="number-pad"
                       maxLength={6}
-                      style={styles.otpInput}
+                      style={[
+                        styles.otpInput,
+                        activeDelivery.paymentMode === 'COD' && !cashConfirmed && styles.otpInputDisabled,
+                      ]}
+                      editable={activeDelivery.paymentMode !== 'COD' || cashConfirmed}
                     />
                     <TouchableOpacity
                       style={[
                         styles.deliveryActionBtn,
                         { backgroundColor: Colors.success },
-                        (otp.trim().length < 4 || isCompletingDelivery) && { opacity: 0.6 },
+                        (otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)) && { opacity: 0.5 },
                       ]}
                       onPress={handleCompleteDelivery}
-                      disabled={otp.trim().length < 4 || isCompletingDelivery}
+                      disabled={otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)}
                       activeOpacity={0.8}
                     >
                       {isCompletingDelivery ? (
@@ -1183,40 +1318,175 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.brandMedium,
   },
 
-  // ─── Earnings Grid ────────────────────────
-  earningsGrid: {
-    flexDirection: 'row',
-    gap: 12,
+  // ─── Premium Earnings Dashboard ─────────────
+  dashboardContainer: {
     marginBottom: 16,
+    gap: 12,
   },
-  earningsCard: {
+  // Hero card
+  heroEarningsCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  heroCardBg: {
+    backgroundColor: Colors.primary,
+    padding: 22,
+    borderRadius: 20,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 18,
+  },
+  heroLabel: {
+    fontSize: FontSize.xs,
+    fontFamily: Fonts.brandMedium,
+    color: 'rgba(255,255,255,0.7)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  heroAmount: {
+    fontSize: 38,
+    fontFamily: Fonts.brandBold,
+    color: '#FFF',
+    letterSpacing: -0.5,
+  },
+  heroIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroBreakdownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  heroBreakdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     flex: 1,
+    justifyContent: 'center',
+  },
+  heroBreakdownText: {
+    fontSize: FontSize.xs,
+    fontFamily: Fonts.brandMedium,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  heroBreakdownDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginHorizontal: 4,
+  },
+  // Stats grid
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: (SCREEN_WIDTH - 62) / 2,
     backgroundColor: Colors.background,
     borderRadius: 16,
-    paddingVertical: 18,
+    paddingVertical: 16,
     paddingHorizontal: 14,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  earningsIconBg: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  statIconBg: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
   },
-  earningsValue: {
-    fontSize: FontSize.xl,
+  statValue: {
+    fontSize: FontSize.lg,
     fontFamily: Fonts.brandBold,
     color: Colors.text,
   },
-  earningsLabel: {
-    fontSize: FontSize.xs,
+  statLabel: {
+    fontSize: 11,
     color: Colors.muted,
     marginTop: 2,
     fontFamily: Fonts.brand,
+  },
+  // Wallet & weekly rows
+  walletWeeklyRow: {
+  },
+  walletCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  weeklyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.background,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  walletLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  walletIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: Colors.primary + '12',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  walletLabel: {
+    fontSize: 11,
+    fontFamily: Fonts.brand,
+    color: Colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  walletAmount: {
+    fontSize: FontSize.lg,
+    fontFamily: Fonts.brandBold,
+    color: Colors.text,
+    marginTop: 1,
+  },
+  weeklyBadge: {
+    backgroundColor: Colors.warning + '18',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  weeklyBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts.brandBold,
+    color: Colors.warning,
   },
 
   // ─── Active Delivery Card ─────────────────
@@ -1342,6 +1612,91 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.brandMedium,
     marginTop: 2,
     lineHeight: 20,
+  },
+
+  // ─── COD Styles ───────────────────────────
+  codBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFF3CD',
+    borderColor: '#F5C842',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  codBadgeText: {
+    fontSize: 10,
+    fontFamily: Fonts.brandBold,
+    color: '#7B4F00',
+    letterSpacing: 0.5,
+  },
+  codBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#F5C842',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  codBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  codBannerTitle: {
+    fontSize: FontSize.xs,
+    fontFamily: Fonts.brandMedium,
+    color: '#7B4F00',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  codBannerAmount: {
+    fontSize: 22,
+    fontFamily: Fonts.brandBold,
+    color: '#7B4F00',
+    marginTop: 2,
+  },
+  cashConfirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#F5C842',
+    borderRadius: 12,
+    padding: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.success,
+    borderColor: Colors.success,
+  },
+  cashConfirmText: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontFamily: Fonts.brand,
+    color: Colors.textSecondary,
+    lineHeight: 20,
+  },
+  otpInputDisabled: {
+    backgroundColor: Colors.light,
+    color: Colors.muted,
+    borderColor: Colors.border,
+    opacity: 0.6,
   },
 
   // ─── Action Buttons ───────────────────────

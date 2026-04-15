@@ -34,6 +34,7 @@ export interface DriverCurrentDeliveryOrder {
   } | null;
   items?: Array<unknown>;
   totalAmount?: number | null;
+  paymentMode?: string | null;
 }
 
 export interface DriverCurrentDeliveryResponse {
@@ -62,9 +63,20 @@ export interface DriverOrderRouteResponse {
 }
 
 export interface DriverEarningsResponse {
+  // Lifetime
   totalDeliveries: number;
   rating: number;
   ratingCount: number;
+  // Today
+  todayDeliveries: number;
+  todayEarnings: number;
+  todayDeliveryPay: number;
+  todayTips: number;
+  // This Week
+  weeklyDeliveries: number;
+  weeklyEarnings: number;
+  // Wallet
+  walletBalance: number;
 }
 
 interface AvailableOrderApiResponse {
