@@ -14,6 +14,7 @@ import { useRegisterPushToken, useUpdatePushToken } from "@/hooks/useExpoPushNot
 import { useSocketStore } from "@/store/useSocketStore";
 import { router } from "expo-router";
 import apiClient from "@/lib/axios";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface NotificationContextType {
   pushToken: string | null;
@@ -56,9 +57,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const { mutateAsync: registerPushToken } = useRegisterPushToken();
   const { mutateAsync: updatePushToken } = useUpdatePushToken();
   const addOrderOffer = useSocketStore((state) => state.addOrderOffer);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     let isMounted = true;
+    const isAuthenticated = !!session;
+
+    // Do not request or sync push tokens if the user is not logged in!
+    if (!isAuthenticated) return;
 
     const setupNotifications = async () => {
       try {
@@ -134,6 +140,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               : NaN;
 
         console.log("Rider tapped notification:", { type, orderId });
+
+        // ── Application status updates ──────────────────────────────────────
+        if (
+          type === "PARTNER_REQUEST_APPROVED" ||
+          type === "PARTNER_REQUEST_REJECTED"
+        ) {
+          // Force the ApplicationStatusScreen to show fresh data
+          queryClient.invalidateQueries({
+            queryKey: ["delivery-partner-status"],
+          });
+          setTimeout(() => {
+            router.navigate("/(tabs)");
+          }, 300);
+          return;
+        }
 
         if (type !== "ORDER_OFFER" || !orderId) {
           return;

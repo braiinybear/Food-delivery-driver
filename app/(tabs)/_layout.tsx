@@ -190,6 +190,39 @@ export default function TabsLayout() {
             ),
           }}
         />
+
+        <Tabs.Screen
+          name="wallet"
+          options={{
+            title: "Wallet",
+            headerShown: true,
+            headerLeft: () => <BackButton />,
+            headerStyle: {
+              backgroundColor: Colors.primary,
+              borderBottomWidth: 1,
+              borderBottomColor: Colors.text + "08",
+            },
+            headerTitleStyle: {
+              fontSize: 18,
+              fontWeight: "700",
+              color: Colors.white,
+            },
+            headerTitleAlign: "left",
+            tabBarBadgeStyle: {
+              backgroundColor: Colors.secondary,
+              color: Colors.white,
+              fontSize: 10,
+              top: -2,
+            },
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="wallet" color={color} size={size - 2} />
+            ),
+          }}
+        />
+
+
+
+
       </Tabs>
 
 

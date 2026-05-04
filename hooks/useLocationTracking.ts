@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
+// We'll require TaskManager safely in the try catch below to avoid native module crashes at load time
 import { getSocket, initSocket } from '@/lib/socket-client';
 import apiClient from '@/lib/axios';
 
@@ -8,10 +8,11 @@ const MIN_EMIT_INTERVAL_MS = 2000;
 const BACKGROUND_LOCATION_TASK = 'BACKGROUND_LOCATION_TASK';
 
 try {
+  const TaskManager = require('expo-task-manager');
   if (TaskManager.isTaskDefined(BACKGROUND_LOCATION_TASK)) {
      // Task already defined
   } else {
-    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }) => {
+    TaskManager.defineTask(BACKGROUND_LOCATION_TASK, async ({ data, error }: { data: any, error: any }) => {
       if (error) {
         console.error('[Location] Background task error:', error);
         return;

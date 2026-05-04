@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { showAlert } from "@/store/useAlertStore";
 
 type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -33,6 +34,7 @@ interface StatusScreenContent {
 
 export default function ApplicationStatusScreen() {
   const { setAppliedForRider } = usePartnerStore();
+  const insets = useSafeAreaInsets();
   const {
     data: application,
     isLoading,
@@ -107,50 +109,45 @@ export default function ApplicationStatusScreen() {
   // ─── Loading State ────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-        />
+      <View style={{ flex: 1, backgroundColor: Colors.primary }}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+        <View style={[styles.headerStatic, { paddingTop: insets.top + 8 }]}>
+          <Text style={styles.headerTitle}>Application Status</Text>
+          <View style={{ width: 36 }} />
+        </View>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={Colors.primary} />
           <Text style={styles.loadingText}>
             Checking your application status...
           </Text>
         </View>
-      </>
+      </View>
     );
   }
 
   // ─── Error State (No Application Found) ────────────────────────────────────
   if (isError || !application) {
     return (
-      <>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={Colors.background}
-        />
+      <View style={{ flex: 1, backgroundColor: Colors.primary }}>
+        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+
+        {/* Header — outside ScrollView so it covers status bar */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <Text style={styles.headerTitle}>Application Status</Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            style={styles.refreshBtn}
+            disabled={isLoading}
+          >
+            <Ionicons name="refresh" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          style={{ backgroundColor: Colors.background }}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={{ width: 36 }} />
-            <Text style={styles.headerTitle}>Application Status</Text>
-            <TouchableOpacity
-              onPress={() => refetch()}
-              style={styles.refreshBtn}
-              disabled={isLoading}
-            >
-              <Ionicons
-                name="refresh"
-                size={24}
-                color={isLoading ? Colors.muted : Colors.primary}
-              />
-            </TouchableOpacity>
-          </View>
-
           {/* Empty State */}
           <View style={styles.emptyStateContainer}>
             <View style={styles.emptyStateIcon}>
@@ -185,7 +182,7 @@ export default function ApplicationStatusScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </>
+      </View>
     );
   }
 
@@ -193,29 +190,26 @@ export default function ApplicationStatusScreen() {
   const content = getStatusContent(application.status as ApplicationStatus);
 
   return (
-    <>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+    <View style={{ flex: 1, backgroundColor: Colors.primary }}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+
+      {/* Header — outside ScrollView so it covers status bar */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.headerTitle}>Application Status</Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          style={styles.refreshBtn}
+          disabled={isLoading}
+        >
+          <Ionicons name="refresh" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        style={{ backgroundColor: Colors.background }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={{ width: 36 }} />
-          <Text style={styles.headerTitle}>Application Status</Text>
-          <TouchableOpacity
-            onPress={() => refetch()}
-            style={styles.refreshBtn}
-            disabled={isLoading}
-          >
-            <Ionicons
-              name="refresh"
-              size={24}
-              color={isLoading ? Colors.muted : Colors.primary}
-            />
-          </TouchableOpacity>
-        </View>
-
         {/* Status Card */}
         <View
           style={[
@@ -302,12 +296,12 @@ export default function ApplicationStatusScreen() {
                   <Text style={styles.specValue}>
                     {application.createdAt
                       ? new Date(application.createdAt).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                          },
-                        )
+                        "en-US",
+                        {
+                          month: "short",
+                          day: "numeric",
+                        },
+                      )
                       : "N/A"}
                   </Text>
                 </View>
@@ -317,42 +311,42 @@ export default function ApplicationStatusScreen() {
               {(application.licenseFrontUrl ||
                 application.licenseBackUrl ||
                 application.vehicleRcUrl) && (
-                <View style={styles.documentsSection}>
-                  <Text style={styles.sectionTitle}>📋 Documents</Text>
-                  <View style={styles.documentsList}>
-                    {application.licenseFrontUrl && (
-                      <View style={styles.documentItem}>
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={16}
-                          color={Colors.success}
-                        />
-                        <Text style={styles.documentText}>License Front</Text>
-                      </View>
-                    )}
-                    {application.licenseBackUrl && (
-                      <View style={styles.documentItem}>
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={16}
-                          color={Colors.success}
-                        />
-                        <Text style={styles.documentText}>License Back</Text>
-                      </View>
-                    )}
-                    {application.vehicleRcUrl && (
-                      <View style={styles.documentItem}>
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={16}
-                          color={Colors.success}
-                        />
-                        <Text style={styles.documentText}>Vehicle RC</Text>
-                      </View>
-                    )}
+                  <View style={styles.documentsSection}>
+                    <Text style={styles.sectionTitle}>📋 Documents</Text>
+                    <View style={styles.documentsList}>
+                      {application.licenseFrontUrl && (
+                        <View style={styles.documentItem}>
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color={Colors.success}
+                          />
+                          <Text style={styles.documentText}>License Front</Text>
+                        </View>
+                      )}
+                      {application.licenseBackUrl && (
+                        <View style={styles.documentItem}>
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color={Colors.success}
+                          />
+                          <Text style={styles.documentText}>License Back</Text>
+                        </View>
+                      )}
+                      {application.vehicleRcUrl && (
+                        <View style={styles.documentItem}>
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={16}
+                            color={Colors.success}
+                          />
+                          <Text style={styles.documentText}>Vehicle RC</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
             </>
           )}
 
@@ -423,7 +417,7 @@ export default function ApplicationStatusScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       )}
-    </>
+    </View>
   );
 }
 
@@ -440,12 +434,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    marginTop: 30,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: Colors.primary,
+  },
+  headerStatic: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: Colors.primary,
   },
   backBtn: {
     width: 36,
@@ -456,13 +455,18 @@ const styles = StyleSheet.create({
   refreshBtn: {
     width: 36,
     height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.4)",
     justifyContent: "center",
     alignItems: "center",
   },
   headerTitle: {
     fontFamily: Fonts.brandBold,
     fontSize: FontSize.md,
-    color: Colors.text,
+    color: "#FFFFFF",
+    flex: 1,
   },
   centerContent: {
     flex: 1,

@@ -920,14 +920,34 @@ export default function HomeScreen() {
     return (
       <>
         <Tabs.Screen options={{ tabBarStyle: { display: "none" } }} />
-        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
+        <View style={{ flex: 1 }}>
           <ApplicationStatusScreen />
-        </SafeAreaView>
+        </View>
       </>
     );
   }
 
-  return <DriverHomeContent />;
+  return (
+    <>
+      <Tabs.Screen 
+        options={{ 
+          tabBarStyle: {
+            backgroundColor: Colors.primary,
+            borderTopWidth: 0,
+            height: 64 + insets.bottom,
+            paddingBottom: 10 + insets.bottom,
+            paddingTop: 6,
+            elevation: 8,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.06,
+            shadowRadius: 8,
+          }
+        }} 
+      />
+      <DriverHomeContent />
+    </>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════

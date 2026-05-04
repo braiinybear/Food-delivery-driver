@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Image,
@@ -28,6 +29,7 @@ const VEHICLE_TYPES = ["Bike", "Scooter"];
 export default function DriverFormScreen() {
   const { setAppliedForRider } = usePartnerStore();
   const { mutate: applyAsRider, isPending: isLoading } =useApplyDeliveryPartner();
+  const insets = useSafeAreaInsets();
 
   const [vehicleType, setVehicleType] = useState("Bike");
   const [licenseNumber, setLicenseNumber] = useState("");
@@ -370,7 +372,7 @@ export default function DriverFormScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
           showsVerticalScrollIndicator={false}
         >
           {/* Progress Indicator */}

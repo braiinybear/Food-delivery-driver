@@ -1,5 +1,7 @@
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
+import { authClient } from "./auth-client";
+import { router } from "expo-router";
 
 // Use your backend IP (avoid localhost for physical devices)
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -54,14 +56,22 @@ apiClient.interceptors.request.use(
         return Promise.reject(error);
     }
 );
-
-
 // Response Interceptor: Handles 401 Unauthorized globally
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
         if (error.response?.status === 401) {
-            console.error("Session expired or invalid.");
+            console.error("Session expired or invalid. Logging out...");
+            // Run cleanup without blocking or throwing new errors if backend is unreachable
+            authClient.signOut().catch(() => { });
+            SecureStore.deleteItemAsync(BETTER_AUTH_COOKIE_KEY).catch(() => { });
+
+            // Redirect to login
+            if (router.canGoBack() || router.canDismiss()) {
+                router.replace('/(auth)/login');
+            } else {
+                router.replace('/(auth)/login');
+            }
         }
         return Promise.reject(error);
     }
