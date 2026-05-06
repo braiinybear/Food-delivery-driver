@@ -4,6 +4,7 @@ import { DeliveryProfile } from "@/types/rider";
 import { useQuery } from "@tanstack/react-query";
 export const getMyDeliveryProfile = async (): Promise<DeliveryProfile> => {
   const { data } = await apiClient.get("/delivery/me");
+  console.log("Delivery Profile:", data);
   return data;
 };
 export const useDeliveryProfile = () => {

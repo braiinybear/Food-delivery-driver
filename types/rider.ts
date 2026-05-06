@@ -8,6 +8,8 @@ export interface DeliveryPartnerRequestBody {
   licenseBackUrl: string;
   vehicleRcUrl: string;
   profilePicUrl: string;
+  phoneNumber?: string;
+  email?: string;
 }
 
 export interface DeliveryPartnerResponse {

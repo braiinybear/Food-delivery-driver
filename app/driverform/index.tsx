@@ -7,7 +7,8 @@ import { showAlert } from "@/store/useAlertStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { authClient } from "@/lib/auth-client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
@@ -31,7 +32,17 @@ export default function DriverFormScreen() {
   const { mutate: applyAsRider, isPending: isLoading } =useApplyDeliveryPartner();
   const insets = useSafeAreaInsets();
 
+  const { data: session } = authClient.useSession();
+  const user = session?.user;
+
   const [vehicleType, setVehicleType] = useState("Bike");
+  const [phoneNumber, setPhoneNumber] = useState(user?.phoneNumber || "");
+  const [email, setEmail] = useState(user?.email || "");
+
+  useEffect(() => {
+    if (user?.phoneNumber && !phoneNumber) setPhoneNumber(user.phoneNumber);
+    if (user?.email && !email) setEmail(user.email);
+  }, [user]);
   const [licenseNumber, setLicenseNumber] = useState("");
   const [vehiclePlate, setVehiclePlate] = useState("");
   const [licenseFrontUrl, setLicenseFrontUrl] = useState("");
@@ -248,6 +259,8 @@ export default function DriverFormScreen() {
         licenseBackUrl,
         vehicleRcUrl,
         profilePicUrl: profilePicUrl || "",
+        phoneNumber: phoneNumber.trim() || undefined,
+        email: email.trim() || undefined,
       },
       {
         onSuccess: (data) => {
@@ -531,6 +544,51 @@ export default function DriverFormScreen() {
               <Text style={styles.helperText}>
                 Your vehicle&apos;s registration number
               </Text>
+            </View>
+
+            {/* Phone Number */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Phone Number</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="call-outline"
+                  size={20}
+                  color={Colors.muted}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="+1234567890"
+                  placeholderTextColor={Colors.muted}
+                  value={phoneNumber}
+                  onChangeText={setPhoneNumber}
+                  keyboardType="phone-pad"
+                  editable={!isLoading}
+                />
+              </View>
+            </View>
+
+            {/* Email */}
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputContainer}>
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={Colors.muted}
+                  style={styles.inputIcon}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="driver@example.com"
+                  placeholderTextColor={Colors.muted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  editable={!isLoading}
+                />
+              </View>
             </View>
 
             {/* Document Upload Section */}

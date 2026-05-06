@@ -4,6 +4,7 @@ import { useDeliveryPartnerStatus } from "@/hooks/useDeliveryPartnerRequest";
 import { usePartnerStore } from "@/store/userider";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { authClient } from "@/lib/auth-client";
 import {
   ActivityIndicator,
   ScrollView,
@@ -34,6 +35,7 @@ interface StatusScreenContent {
 
 export default function ApplicationStatusScreen() {
   const { setAppliedForRider } = usePartnerStore();
+  const { refetch: refetchSession } = authClient.useSession();
   const insets = useSafeAreaInsets();
   const {
     data: application,
@@ -52,7 +54,8 @@ export default function ApplicationStatusScreen() {
           iconBackgroundColor: "rgba(46, 204, 113, 0.1)",
           message: `Congratulations! Your delivery partner application has been approved. You can now start accepting delivery orders with your ${application?.vehicleType || "vehicle"}.`,
           primaryButtonText: "Go to Dashboard",
-          primaryButtonAction: () => {
+          primaryButtonAction: async () => {
+            await refetchSession();
             setAppliedForRider(false);
             router.replace("/");
           },
