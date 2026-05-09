@@ -88,6 +88,7 @@ export default function Register() {
                     resizeMode="contain"
                 />
 
+             
                 {/* ── Email Sign-up Section ── */}
                 <View style={styles.section}>
                     <Text style={styles.sectionLabel}>Create Account</Text>
@@ -176,7 +177,7 @@ export default function Register() {
                     onPress={() => router.push("/(auth)/login")}
                     style={styles.switchContainer}
                 >
-                    <Text style={styles.switchText}>Already have an account? Sign In</Text>
+                    <Text style={styles.switchText}>Already have an account? <Text style={styles.switchTextLink}>Sign In</Text></Text>
                 </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -188,14 +189,32 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         padding: 24,
         paddingBottom: 40,
-        justifyContent: "center",
         backgroundColor: Colors.background,
     },
     logo: {
-        width: 200,
-        height: 200,
+        width: 140,
+        height: 140,
         alignSelf: "center",
-        marginBottom: 4,
+        marginTop: 60,
+        marginBottom: 20,
+    },
+    headerContainer: {
+        marginBottom: 32,
+        alignItems: "center",
+    },
+    title: {
+        fontSize: 32,
+        fontFamily: Fonts.brandBlack,
+        color: Colors.text,
+        textAlign: "center",
+        marginBottom: 8,
+    },
+    subtitle: {
+        fontSize: 16,
+        fontFamily: Fonts.brandMedium,
+        color: Colors.textSecondary,
+        textAlign: "center",
+        paddingHorizontal: 20,
     },
 
     // ── Section ────────────────────────────────────────────────
@@ -205,22 +224,24 @@ const styles = StyleSheet.create({
     },
     sectionLabel: {
         fontFamily: Fonts.brandBold,
-        fontSize: FontSize.sm,
+        fontSize: 12,
         color: Colors.textSecondary,
-        marginBottom: 10,
+        marginBottom: 12,
         textTransform: "uppercase",
-        letterSpacing: 0.8,
+        letterSpacing: 1.2,
+        paddingLeft: 4,
     },
 
     // ── Inputs ───────────────────────────────────────────────
     input: {
         borderWidth: 1,
         borderColor: Colors.border,
-        padding: 14,
-        borderRadius: 12,
-        marginBottom: 14,
-        fontSize: FontSize.md,
-        fontFamily: Fonts.brand,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderRadius: 18,
+        marginBottom: 16,
+        fontSize: 16,
+        fontFamily: Fonts.brandMedium,
         backgroundColor: Colors.background,
         color: Colors.text,
     },
@@ -228,36 +249,41 @@ const styles = StyleSheet.create({
     // ── Buttons ──────────────────────────────────────────────
     primaryButton: {
         backgroundColor: Colors.primary,
-        padding: 16,
-        borderRadius: 12,
+        paddingVertical: 16,
+        borderRadius: 18,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: 10,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     primaryButtonText: {
         color: Colors.white,
-        fontSize: FontSize.md,
+        fontSize: 16,
         fontFamily: Fonts.brandBold,
     },
     buttonDisabled: {
-        opacity: 0.6,
+        opacity: 0.7,
     },
 
     // ── Divider ──────────────────────────────────────────────
     dividerContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginVertical: 20,
+        marginVertical: 32,
     },
     divider: { flex: 1, height: 1, backgroundColor: Colors.border },
     dividerText: {
-        marginHorizontal: 12,
+        marginHorizontal: 16,
         color: Colors.muted,
         fontFamily: Fonts.brandMedium,
-        fontSize: FontSize.xs,
+        fontSize: 12,
         textTransform: "uppercase",
-        letterSpacing: 0.6,
+        letterSpacing: 1,
     },
 
     // ── Google ───────────────────────────────────────────────
@@ -265,52 +291,60 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: 12,
         borderWidth: 1,
         borderColor: Colors.border,
-        padding: 12,
-        borderRadius: 12,
+        paddingVertical: 14,
+        borderRadius: 18,
         backgroundColor: Colors.background,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
         elevation: 2,
-        marginBottom: 8,
+        marginBottom: 12,
     },
-    googleIcon: { width: 35, height: 35 },
+    googleIcon: { width: 24, height: 24 },
     googleButtonText: {
         color: Colors.text,
-        fontSize: FontSize.md,
-        fontFamily: Fonts.brandMedium,
+        fontSize: 16,
+        fontFamily: Fonts.brandBold,
     },
 
     // ── Switch ───────────────────────────────────────────────
-    switchContainer: { marginTop: 20, alignItems: "center" },
+    switchContainer: { 
+        marginTop: 24, 
+        alignItems: "center",
+        paddingBottom: 20,
+    },
     switchText: {
-        color: Colors.primary,
-        fontSize: FontSize.sm,
+        color: Colors.textSecondary,
+        fontSize: 14,
         fontFamily: Fonts.brandMedium,
+    },
+    switchTextLink: {
+        color: Colors.primary,
+        fontFamily: Fonts.brandBold,
     },
     referralCodeText: {
         color: Colors.primary,
-        fontSize: FontSize.sm,
-        fontFamily: Fonts.brandMedium,
+        fontSize: 14,
+        fontFamily: Fonts.brandBold,
         textAlign: "center",
-        marginBottom: 10,
-        textDecorationLine: "underline",
+        marginTop: 16,
+        marginBottom: 8,
     },
     referralCodeInput: {
         borderWidth: 1,
         borderColor: Colors.border,
-        padding: 15,
-        borderRadius: 12,
-        backgroundColor: Colors.background,
-        fontSize: FontSize.md,
-        fontFamily: Fonts.brand,
+        paddingHorizontal: 18,
+        paddingVertical: 14,
+        borderRadius: 18,
+        backgroundColor: Colors.surface,
+        fontSize: 16,
+        fontFamily: Fonts.brandBold,
         color: Colors.text,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        marginBottom: 8,
+        textAlign: 'center',
+        letterSpacing: 2,
     }
 });

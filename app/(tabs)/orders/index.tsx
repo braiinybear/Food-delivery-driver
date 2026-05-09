@@ -19,6 +19,7 @@ import { Colors } from '@/constants/colors';
 import { useAcceptDelivery, useDeclineDelivery } from '@/hooks/useDriverDeliveries';
 import { AvailableOrder, useAvailableOrders, useCurrentDelivery } from '@/hooks/useDriverOrders';
 import { OrderOffer, useSocketStore } from '@/store/useSocketStore';
+import { Fonts } from '@/constants/typography';
 
 const formatDistance = (km: number | null | undefined) => {
   if (typeof km !== 'number' || !Number.isFinite(km)) {
@@ -110,10 +111,10 @@ export default function DriverOrdersScreen() {
           clearOffers();
           setSelectedOrderId(null);
           setPendingOrderAction(null);
-          
+
           // Force refresh the active delivery state across the app
           queryClient.invalidateQueries({ queryKey: ['driver-current-delivery'] });
-          
+
           // Switch to the Home tab so tracking starts immediately
           router.replace('/(tabs)');
         },
@@ -139,7 +140,7 @@ export default function DriverOrdersScreen() {
           removeOrderOffer(orderId);
           setSelectedOrderId(null);
           setPendingOrderAction(null);
-          
+
           // Manually update the 'orders' cache locally so it vanishes from fallbackOrders too
           queryClient.setQueryData(['driver-available-orders'], (old: any) => {
             if (!old) return old;
@@ -171,10 +172,12 @@ export default function DriverOrdersScreen() {
         </View>
       ) : isEmpty ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="radio-outline" size={48} color={Colors.muted} />
+          <View style={styles.emptyIconBg}>
+            <Ionicons name="radio-outline" size={42} color={Colors.primary} />
+          </View>
           <Text style={styles.emptyText}>No live offers right now</Text>
           <Text style={styles.emptySubtext}>
-            Go online and keep the app active to receive driver-specific offers.
+            Go online and stay active to receive the best delivery offers in real-time.
           </Text>
         </View>
       ) : (
@@ -287,8 +290,8 @@ function LiveOfferCard({
     typeof offer.distanceKm === 'number'
       ? offer.distanceKm
       : typeof offer.distanceKm === 'string'
-      ? Number(offer.distanceKm)
-      : null;
+        ? Number(offer.distanceKm)
+        : null;
 
   return (
     <View style={[styles.card, styles.liveOfferCard]}>
@@ -506,7 +509,7 @@ function OrderDetailModal({
       <View style={styles.modalBackdrop}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={onClose}
               style={styles.modalCloseBtn}
             >
@@ -604,7 +607,7 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: Colors.surface,
   },
   loaderContainer: {
     flex: 1,
@@ -615,324 +618,346 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
+  },
+  emptyIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: Colors.primary.slice(0, 7) + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontFamily: Fonts.brandBlack,
     color: Colors.text,
-    marginTop: 16,
+    textAlign: 'center',
   },
   emptySubtext: {
-    fontSize: 13,
-    color: Colors.muted,
+    fontSize: 14,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 19,
+    marginTop: 10,
+    lineHeight: 22,
+    fontFamily: Fonts.brandMedium,
   },
   content: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    paddingBottom: 36,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 40,
   },
   headerInfo: {
-    marginBottom: 12,
+    marginBottom: 20,
+    paddingHorizontal: 4,
   },
   availableCount: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: Fonts.brandBlack,
     color: Colors.text,
   },
   headerSubtext: {
     fontSize: 12,
-    color: Colors.muted,
-    marginTop: 2,
-    lineHeight: 18,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    fontFamily: Fonts.brandMedium,
   },
   sectionHeader: {
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 24,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontFamily: Fonts.brandBlack,
     color: Colors.text,
   },
   sectionSubtext: {
     fontSize: 12,
     color: Colors.muted,
-    marginTop: 2,
-    lineHeight: 18,
+    marginTop: 4,
+    fontFamily: Fonts.brandMedium,
   },
   card: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   liveOfferCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: '#FF6B35',
+    borderColor: Colors.primary.slice(0, 7) + '30',
+    backgroundColor: '#FFFFFF',
   },
   liveOfferHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     gap: 12,
+    marginBottom: 12,
   },
   liveOfferEyebrow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF6B35',
+    fontSize: 10,
+    fontFamily: Fonts.brandBlack,
+    color: Colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1.2,
     marginBottom: 4,
   },
   liveOfferCountdown: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFF7ED',
-    borderRadius: 999,
-    paddingHorizontal: 10,
+    gap: 6,
+    backgroundColor: Colors.primary.slice(0, 7) + '10',
+    borderRadius: 20,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
   liveOfferCountdownText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#B45309',
+    fontFamily: Fonts.brandBold,
+    color: Colors.primary,
   },
   fallbackHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 12,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: 16,
+    fontFamily: Fonts.brandBlack,
+    color: Colors.text,
   },
   cardSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 3,
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    fontFamily: Fonts.brandMedium,
   },
   metricBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFF3E0',
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    backgroundColor: Colors.primary.slice(0, 7) + '10',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   metricBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF6B35',
+    fontSize: 12,
+    fontFamily: Fonts.brandBold,
+    color: Colors.primary,
   },
   metricRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 16,
   },
   metricPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F8FAFC',
+    gap: 6,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderColor: Colors.border,
   },
   metricText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#4B5563',
+    fontFamily: Fonts.brandBold,
+    color: Colors.text,
   },
   addressBlock: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 12,
   },
   addressText: {
     flex: 1,
-    fontSize: 12,
-    color: '#555',
-    fontWeight: '500',
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: Fonts.brandMedium,
+    lineHeight: 18,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
+    gap: 12,
+    marginTop: 20,
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 10,
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   actionButtonPrimary: {
-    backgroundColor: '#FF6B35',
+    backgroundColor: Colors.primary,
+    shadowColor: Colors.primary,
   },
   actionButtonSecondary: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: Colors.surface,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: Colors.border,
+    shadowColor: '#000',
   },
   actionButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: Fonts.brandBold,
   },
   actionButtonTextPrimary: {
     color: '#FFF',
   },
   actionButtonTextSecondary: {
-    color: '#666',
+    color: Colors.textSecondary,
   },
   tapHint: {
-    fontSize: 10,
-    color: '#A3A3A3',
+    fontSize: 11,
+    color: Colors.muted,
+    fontFamily: Fonts.brandMedium,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
+    letterSpacing: 0.5,
   },
+  // Modal Styles
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     maxHeight: '90%',
+    paddingBottom: 30,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    justifyContent: 'space-between',
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: Colors.border,
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: Fonts.brandBlack,
     color: Colors.text,
   },
   modalScroll: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    padding: 20,
   },
   routeCard: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    marginBottom: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
   },
   routeStop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    gap: 15,
   },
   routeDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    marginTop: 4,
+  },
+  routeLabel: {
+    fontSize: 10,
+    fontFamily: Fonts.brandBlack,
+    color: Colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  routeText: {
+    fontSize: 14,
+    fontFamily: Fonts.brandMedium,
+    color: Colors.text,
+    lineHeight: 20,
   },
   routeLine: {
     width: 2,
-    height: 24,
-    backgroundColor: '#E0E0E0',
+    height: 20,
+    backgroundColor: Colors.border,
     marginLeft: 5,
-    marginVertical: 6,
-  },
-  routeLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#999',
-    textTransform: 'uppercase',
-  },
-  routeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginTop: 4,
+    marginVertical: 4,
   },
   detailGrid: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
   },
   detailCard: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
+    backgroundColor: Colors.background,
+    borderRadius: 16,
     padding: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F0F0F0',
+    borderColor: Colors.border,
   },
   detailValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginTop: 6,
+    fontSize: 14,
+    fontFamily: Fonts.brandBlack,
+    color: Colors.text,
+    marginTop: 8,
   },
   detailLabel: {
     fontSize: 10,
-    color: '#999',
+    fontFamily: Fonts.brandMedium,
+    color: Colors.muted,
     marginTop: 2,
   },
   infoBlock: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    marginBottom: 10,
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   infoBlockLabel: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#666',
-    marginBottom: 6,
+    fontFamily: Fonts.brandBold,
+    color: Colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
   infoBlockValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontSize: 15,
+    fontFamily: Fonts.brandBold,
+    color: Colors.text,
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    gap: 12,
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
 });

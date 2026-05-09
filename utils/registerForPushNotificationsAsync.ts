@@ -39,12 +39,13 @@ export async function registerForPushNotificationsAsync() {
           projectId,
         })
       ).data;
-      console.log(pushTokenString);
+      console.log("✅ Expo Push Token:", pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
-      handleRegistrationError(`${e}`);
+      console.error(`[PushToken] Error fetching token: ${e}`);
+      // No more blocking alert
     }
   } else {
-    handleRegistrationError('Must use physical device for push notifications');
+    console.warn('[PushToken] Must use physical device for push notifications');
   }
 }

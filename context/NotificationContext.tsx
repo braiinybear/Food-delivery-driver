@@ -97,10 +97,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
               console.log("Push token updated with backend");
             }
           } catch (err) {
-            console.log("Failed to sync push token:", err);
+            console.log("Failed to sync push token to backend:", err);
           }
+        } else {
+          console.log("No push token obtained (Expo service might be down). Falling back to WebSockets only.");
         }
       } catch (err) {
+        console.error("Critical error in setupNotifications:", err);
         if (isMounted) {
           setError(err instanceof Error ? err : new Error(String(err)));
         }
