@@ -730,7 +730,7 @@ function DriverHomeContent() {
               <View style={styles.deliveryInfo}>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Customer</Text>
-                  <Text style={styles.infoValue}>{activeDelivery.customer?.name || "Customer"}</Text>
+                  <Text style={styles.infoValue}>{(activeDelivery as any).customerAddress?.receiverName || activeDelivery.customer?.name || "Customer"}</Text>
                 </View>
                 <View style={styles.divider} />
                 
@@ -740,10 +740,11 @@ function DriverHomeContent() {
                     <TouchableOpacity
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.success, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 }}
                       onPress={() => {
-                        if (activeDelivery.customer?.phoneNumber) {
-                          Linking.openURL(`tel:${activeDelivery.customer.phoneNumber}`); 
+                        const targetPhone = (activeDelivery as any).customerAddress?.receiverPhone || activeDelivery.customer?.phoneNumber;
+                        if (targetPhone) {
+                          Linking.openURL(`tel:${targetPhone}`); 
                         } else {
-                          showAlert("Error", "Customer phone number not available.");
+                          showAlert("Error", "No contact phone number available for this delivery.");
                         }
                       }}
                       activeOpacity={0.8}
