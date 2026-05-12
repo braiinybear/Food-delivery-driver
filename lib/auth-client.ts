@@ -17,6 +17,13 @@ export const authClient = createAuthClient({
       },
     },
   },
+  session: {
+    additionalFields: {
+      pushToken: {
+        type: "string",
+      },
+    },
+  },
   plugins: [
     expoClient({
       storage: SecureStore, // Encrypted persistence
