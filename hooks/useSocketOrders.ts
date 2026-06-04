@@ -175,12 +175,12 @@ export function useDeliveryTracking(orderId: string | null) {
     setAcceptedOrder(orderId);
 
     // Join order room for tracking updates
-    socket.emit('join_order_tracking', orderId);
+    socket.emit('join_order_tracking', { orderId });
 
     console.log(`[Driver] Tracking delivery for order: ${orderId}`);
 
     return () => {
-      socket.emit('leave_order_tracking', orderId);
+      socket.emit('leave_order_tracking', { orderId });
       setAcceptedOrder(null);
     };
   }, [orderId, socket, setAcceptedOrder]);
