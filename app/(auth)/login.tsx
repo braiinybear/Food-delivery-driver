@@ -1,4 +1,4 @@
-import { Colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { Fonts, FontSize } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
 import { showAlert } from "@/store/useAlertStore";
@@ -21,6 +21,8 @@ import {
 type Step = "phone" | "otp";
 
 export default function Login() {
+    const { Colors, isDark } = useTheme();
+    const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
 
     const [toggleEmailPhoneLogin, settoggleEmailPhoneLogin] = useState<boolean>(false);
     // Phone / OTP state
@@ -357,18 +359,18 @@ export default function Login() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 24,
         paddingBottom: 40,
+        justifyContent: "center",
         backgroundColor: Colors.background,
     },
     logo: {
-        width: 250,
-        height: 250,
+        width: 120,
+        height: 120,
         alignSelf: "center",
-        marginTop: 60,
         marginBottom: 20,
     },
     headerContainer: {
@@ -490,7 +492,7 @@ const styles = StyleSheet.create({
 
     // ── Buttons ──────────────────────────────────────────────
     primaryButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: isDark ? Colors.primary : Colors.secondary,
         paddingVertical: 16,
         borderRadius: 18,
         flexDirection: "row",
@@ -509,7 +511,7 @@ const styles = StyleSheet.create({
         fontFamily: Fonts.brandBold,
     },
     secondaryButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: isDark ? Colors.primary : Colors.secondary,
         paddingVertical: 16,
         borderRadius: 18,
         flexDirection: "row",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Modal,
   View,
@@ -10,9 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
-
-const { width, height } = Dimensions.get('window');
+import { useTheme } from '@/context/ThemeContext';
 
 interface NewOrderOfferModalProps {
   visible: boolean;
@@ -37,6 +35,8 @@ export function NewOrderOfferModal({
   totalOffers = 1,
   onDismiss
 }: NewOrderOfferModalProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const [timeLeft, setTimeLeft] = useState(30);
   const progressAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -56,7 +56,6 @@ export function NewOrderOfferModal({
         setTimeLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timer);
-            // On timeout, just dismiss so it stays in the "Orders" list
             if (onDismiss) onDismiss();
             return 0;
           }
@@ -64,10 +63,9 @@ export function NewOrderOfferModal({
         });
       }, 1000);
 
-      // Flash effect when a new order arriving while modal is open
       return () => clearInterval(timer);
     }
-  }, [visible, order?.orderId]); // Only reset on new orderId
+  }, [visible, order?.orderId]);
 
   if (!order) return null;
 
@@ -101,7 +99,7 @@ export function NewOrderOfferModal({
               onPress={onDismiss}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons name="close-circle" size={32} color="#D1D5DB" />
+              <Ionicons name="close-circle" size={32} color={isDark ? Colors.muted : "#D1D5DB"} />
             </TouchableOpacity>
           </View>
 
@@ -145,7 +143,7 @@ export function NewOrderOfferModal({
                 <Text style={styles.perkText}>Instant Payout</Text>
               </View>
               <View style={styles.perk}>
-                <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+                <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
                 <Text style={styles.perkText}>Safe Trip</Text>
               </View>
             </View>
@@ -165,7 +163,7 @@ export function NewOrderOfferModal({
               onPress={() => onAccept(order.orderId)}
             >
               <Text style={styles.acceptBtnText}>Accept</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" />
+              <Ionicons name="arrow-forward" size={20} color={isDark ? Colors.background : "#FFF"} />
             </TouchableOpacity>
           </View>
         </View>
@@ -174,14 +172,14 @@ export function NewOrderOfferModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
@@ -205,7 +203,7 @@ const styles = StyleSheet.create({
   timerChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF1EB',
+    backgroundColor: isDark ? 'rgba(255, 107, 53, 0.15)' : '#FFF1EB',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
@@ -219,13 +217,13 @@ const styles = StyleSheet.create({
   typeLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: Colors.muted,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   queueBadge: {
     marginTop: 4,
-    backgroundColor: '#FFF1EB',
+    backgroundColor: isDark ? 'rgba(255, 107, 53, 0.15)' : '#FFF1EB',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -237,7 +235,7 @@ const styles = StyleSheet.create({
   },
   closeBtn: {
     padding: 2,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 20,
     width: 40,
     height: 40,
@@ -245,7 +243,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   newBadge: {
-    backgroundColor: '#DC2626',
+    backgroundColor: Colors.danger,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -257,7 +255,7 @@ const styles = StyleSheet.create({
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 3,
     marginBottom: 28,
     overflow: 'hidden',
@@ -276,49 +274,49 @@ const styles = StyleSheet.create({
   },
   earningLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     fontWeight: '600',
     marginBottom: 6,
   },
   earningValue: {
     fontSize: 48,
     fontWeight: '900',
-    color: '#111827',
+    color: Colors.text,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: isDark ? Colors.background : '#F9FAFB',
     padding: 20,
     borderRadius: 24,
     width: '100%',
     gap: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: Colors.border,
   },
   infoIcon: {
     width: 52,
     height: 52,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   infoTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.text,
   },
   infoSub: {
     fontSize: 14,
-    color: '#6B7280',
+    color: Colors.textSecondary,
     marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.border,
     width: '100%',
     marginVertical: 24,
   },
@@ -335,7 +333,7 @@ const styles = StyleSheet.create({
   perkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4B5563',
+    color: Colors.textSecondary,
   },
   footer: {
     flexDirection: 'row',
@@ -347,12 +345,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
   },
   rejectBtnText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#4B5563',
+    color: Colors.text,
   },
   acceptBtn: {
     flex: 2,
@@ -372,6 +370,6 @@ const styles = StyleSheet.create({
   acceptBtnText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#FFF',
+    color: isDark ? Colors.background : '#FFF',
   },
 });

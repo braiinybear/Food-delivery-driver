@@ -1,10 +1,10 @@
-import { Colors } from "@/constants/colors";
 import { Fonts, FontSize } from "@/constants/typography";
 import { useDeliveryPartnerStatus } from "@/hooks/useDeliveryPartnerRequest";
 import { usePartnerStore } from "@/store/userider";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { authClient } from "@/lib/auth-client";
+import React, { useMemo } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { showAlert } from "@/store/useAlertStore";
+import { useTheme } from "@/context/ThemeContext";
 
 type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -34,6 +35,8 @@ interface StatusScreenContent {
 }
 
 export default function ApplicationStatusScreen() {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const { setAppliedForRider } = usePartnerStore();
   const { refetch: refetchSession } = authClient.useSession();
   const insets = useSafeAreaInsets();
@@ -43,7 +46,8 @@ export default function ApplicationStatusScreen() {
     isError,
     refetch,
   } = useDeliveryPartnerStatus();
-  const getStatusContent = (status: ApplicationStatus): StatusScreenContent => {
+
+  const getStatusContent = (status: ApplicationStatus, Colors: any, isDark: boolean): StatusScreenContent => {
     switch (status) {
       case "APPROVED":
         return {
@@ -51,7 +55,7 @@ export default function ApplicationStatusScreen() {
           subtitle: "You're ready to deliver",
           icon: "checkmark-circle",
           iconColor: Colors.success,
-          iconBackgroundColor: "rgba(46, 204, 113, 0.1)",
+          iconBackgroundColor: isDark ? "rgba(76, 175, 80, 0.15)" : "rgba(46, 204, 113, 0.1)",
           message: `Congratulations! Your delivery partner application has been approved. You can now start accepting delivery orders with your ${application?.vehicleType || "vehicle"}.`,
           primaryButtonText: "Go to Dashboard",
           primaryButtonAction: async () => {
@@ -59,7 +63,7 @@ export default function ApplicationStatusScreen() {
             setAppliedForRider(false);
             router.replace("/");
           },
-          containerBackgroundColor: "rgba(46, 204, 113, 0.05)",
+          containerBackgroundColor: isDark ? "rgba(76, 175, 80, 0.08)" : "rgba(46, 204, 113, 0.05)",
         };
 
       case "PENDING":
@@ -68,10 +72,9 @@ export default function ApplicationStatusScreen() {
           subtitle: "We're reviewing your application",
           icon: "hourglass",
           iconColor: Colors.primary,
-          iconBackgroundColor: "rgba(0, 77, 77, 0.15)",
+          iconBackgroundColor: isDark ? "rgba(212, 175, 55, 0.15)" : "rgba(0, 77, 77, 0.15)",
           message: `Your delivery partner application is being reviewed by our team. This typically takes 24-48 hours. We'll notify you once a decision is made. Vehicle: ${application?.vehicleType || "Unknown"}`,
-          secondaryButtonText: "Go Back",
-          containerBackgroundColor: "rgba(0, 77, 77, 0.05)",
+          containerBackgroundColor: isDark ? "rgba(212, 175, 55, 0.08)" : "rgba(0, 77, 77, 0.05)",
         };
 
       case "REJECTED":
@@ -79,8 +82,8 @@ export default function ApplicationStatusScreen() {
           title: "❌ Application Rejected",
           subtitle: "Application could not be approved",
           icon: "close-circle",
-          iconColor: "#E74C3C",
-          iconBackgroundColor: "rgba(231, 76, 60, 0.1)",
+          iconColor: Colors.danger,
+          iconBackgroundColor: isDark ? "rgba(207, 102, 121, 0.15)" : "rgba(231, 76, 60, 0.1)",
           message: `Unfortunately, your delivery partner application was not approved at this time. You can contact our support team for more details or apply again later with updated information.`,
           primaryButtonText: "Contact Support",
           primaryButtonAction: () => {
@@ -89,9 +92,9 @@ export default function ApplicationStatusScreen() {
               "Please reach out to our support team via:\n\nEmail: support@fooddelivery.com\nPhone: +1-800-123-4567",
             );
           },
-          secondaryButtonText: "Go Back",
-          secondaryButtonAction: () => router.back(),
-          containerBackgroundColor: "rgba(231, 76, 60, 0.05)",
+          secondaryButtonText: "Apply Again",
+          secondaryButtonAction: () => router.push("/driverform"),
+          containerBackgroundColor: isDark ? "rgba(207, 102, 121, 0.08)" : "rgba(231, 76, 60, 0.05)",
         };
 
       default:
@@ -112,8 +115,8 @@ export default function ApplicationStatusScreen() {
   // ─── Loading State ────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.primary }}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: isDark ? Colors.surface : Colors.secondary }}>
+        <StatusBar barStyle="light-content" backgroundColor={isDark ? Colors.surface : Colors.secondary} />
         <View style={[styles.headerStatic, { paddingTop: insets.top + 8 }]}>
           <Text style={styles.headerTitle}>Application Status</Text>
           <View style={{ width: 36 }} />
@@ -131,10 +134,10 @@ export default function ApplicationStatusScreen() {
   // ─── Error State (No Application Found) ────────────────────────────────────
   if (isError || !application) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.primary }}>
-        <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <View style={{ flex: 1, backgroundColor: isDark ? Colors.surface : Colors.secondary }}>
+        <StatusBar barStyle="light-content" backgroundColor={isDark ? Colors.surface : Colors.secondary} />
 
-        {/* Header — outside ScrollView so it covers status bar */}
+        {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <Text style={styles.headerTitle}>Application Status</Text>
           <TouchableOpacity
@@ -162,7 +165,7 @@ export default function ApplicationStatusScreen() {
             </View>
             <Text style={styles.emptyStateTitle}>No Application Found</Text>
             <Text style={styles.emptyStateMessage}>
-              You haven&apos;t submitted a delivery partner application yet.
+              You haven't submitted a delivery partner application yet.
             </Text>
 
             <TouchableOpacity
@@ -190,13 +193,13 @@ export default function ApplicationStatusScreen() {
   }
 
   // ─── Status Content ───────────────────────────────────────────────────────
-  const content = getStatusContent(application.status as ApplicationStatus);
+  const content = getStatusContent(application.status as ApplicationStatus, Colors, isDark);
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.primary }}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+    <View style={{ flex: 1, backgroundColor: isDark ? Colors.surface : Colors.secondary }}>
+      <StatusBar barStyle="light-content" backgroundColor={isDark ? Colors.surface : Colors.secondary} />
 
-      {/* Header — outside ScrollView so it covers status bar */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Text style={styles.headerTitle}>Application Status</Text>
         <TouchableOpacity
@@ -370,7 +373,7 @@ export default function ApplicationStatusScreen() {
 
           {application.status === "REJECTED" && (
             <View style={styles.warningBox}>
-              <Ionicons name="warning-outline" size={20} color="#E74C3C" />
+              <Ionicons name="warning-outline" size={20} color={Colors.danger} />
               <Text style={styles.warningText}>
                 You can apply again after addressing the issues. Contact support
                 for details.
@@ -393,7 +396,7 @@ export default function ApplicationStatusScreen() {
                     : "call-outline"
                 }
                 size={20}
-                color={Colors.white}
+                color={isDark ? Colors.background : Colors.white}
               />
               <Text style={styles.primaryBtnText}>
                 {content.primaryButtonText}
@@ -424,7 +427,7 @@ export default function ApplicationStatusScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
@@ -439,7 +442,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: isDark ? Colors.surface : Colors.secondary,
   },
   headerStatic: {
     flexDirection: "row",
@@ -447,7 +450,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingBottom: 14,
-    backgroundColor: Colors.primary,
+    backgroundColor: isDark ? Colors.surface : Colors.secondary,
   },
   backBtn: {
     width: 36,
@@ -515,7 +518,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   messageBox: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     marginBottom: 14,
@@ -530,7 +533,7 @@ const styles = StyleSheet.create({
   },
   detailsBox: {
     flexDirection: "row",
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: 14,
     paddingVertical: 16,
     marginBottom: 20,
@@ -546,7 +549,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailContent: {
-    color: "black",
+    color: Colors.text,
     flex: 1,
   },
   detailLabel: {
@@ -574,7 +577,7 @@ const styles = StyleSheet.create({
   specCard: {
     flex: 1,
     minWidth: "48%",
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
@@ -585,7 +588,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0, 77, 77, 0.1)",
+    backgroundColor: isDark ? "rgba(212, 175, 55, 0.15)" : "rgba(0, 77, 77, 0.1)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 6,
@@ -604,7 +607,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   documentsSection: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -629,7 +632,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 10,
-    backgroundColor: "rgba(0, 77, 77, 0.05)",
+    backgroundColor: isDark ? Colors.background : "rgba(0, 77, 77, 0.05)",
     borderRadius: 8,
     gap: 8,
     borderWidth: 1,
@@ -645,7 +648,7 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(0, 77, 77, 0.08)",
+    backgroundColor: isDark ? "rgba(212, 175, 55, 0.15)" : "rgba(0, 77, 77, 0.08)",
     borderRadius: 10,
     padding: 10,
     gap: 8,
@@ -663,13 +666,13 @@ const styles = StyleSheet.create({
   warningBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(231, 76, 60, 0.08)",
+    backgroundColor: isDark ? "rgba(207, 102, 121, 0.15)" : "rgba(231, 76, 60, 0.08)",
     borderRadius: 10,
     padding: 10,
     gap: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E74C3C20",
+    borderColor: Colors.danger + "20",
   },
   warningText: {
     flex: 1,
@@ -681,6 +684,8 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 16,
     gap: 8,
+    marginTop: 24,
+    marginBottom: 16,
   },
   primaryBtn: {
     backgroundColor: Colors.primary,
@@ -699,11 +704,11 @@ const styles = StyleSheet.create({
   primaryBtnText: {
     fontFamily: Fonts.brandBold,
     fontSize: FontSize.sm,
-    color: Colors.white,
+    color: isDark ? Colors.background : Colors.white,
     letterSpacing: 0.2,
   },
   secondaryBtn: {
-    backgroundColor: Colors.white,
+    backgroundColor: Colors.light,
     borderRadius: 12,
     paddingVertical: 10,
     flexDirection: "row",
@@ -727,7 +732,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: Colors.primaryLight,
+    backgroundColor: Colors.light,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,

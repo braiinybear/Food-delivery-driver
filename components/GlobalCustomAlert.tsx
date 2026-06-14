@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 import {
   Animated,
   Dimensions,
@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { Fonts, FontSize } from "@/constants/typography";
 import {
   AlertButton,
@@ -22,47 +22,52 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const MODAL_WIDTH = Math.min(SCREEN_WIDTH - 48, 360);
 
 // ─── Icon config per alert type ────────────────────────────────────────
-const ICON_CONFIG: Record<
-  AlertType,
-  {
-    name: keyof typeof Ionicons.glyphMap;
-    bg: string;
-    color: string;
-  }
-> = {
-  success: {
-    name: "checkmark-circle",
-    bg: "#E8F5E9",
-    color: Colors.success,
-  },
-  error: {
-    name: "close-circle",
-    bg: "#FFEBEE",
-    color: Colors.danger,
-  },
-  warning: {
-    name: "warning",
-    bg: "#FFF3E0",
-    color: Colors.warning,
-  },
-  info: {
-    name: "information-circle",
-    bg: "#E0F2F1",
-    color: Colors.primary,
-  },
-  confirm: {
-    name: "help-circle",
-    bg: "#FFF8E1",
-    color: Colors.secondary,
-  },
-};
+function getIconConfig(type: AlertType, Colors: any, isDark: boolean) {
+  const configs: Record<
+    AlertType,
+    {
+      name: keyof typeof Ionicons.glyphMap;
+      bg: string;
+      color: string;
+    }
+  > = {
+    success: {
+      name: "checkmark-circle",
+      bg: isDark ? "rgba(76, 175, 80, 0.15)" : "#E8F5E9",
+      color: Colors.success,
+    },
+    error: {
+      name: "close-circle",
+      bg: isDark ? "rgba(207, 102, 121, 0.15)" : "#FFEBEE",
+      color: Colors.danger,
+    },
+    warning: {
+      name: "warning",
+      bg: isDark ? "rgba(251, 140, 0, 0.15)" : "#FFF3E0",
+      color: Colors.warning,
+    },
+    info: {
+      name: "information-circle",
+      bg: isDark ? "rgba(212, 175, 55, 0.15)" : "#E0F2F1",
+      color: Colors.primary,
+    },
+    confirm: {
+      name: "help-circle",
+      bg: isDark ? "rgba(65, 90, 119, 0.15)" : "#FFF8E1",
+      color: isDark ? Colors.text : Colors.secondary,
+    },
+  };
+  return configs[type] ?? configs.info;
+}
 
 // ─── Button style helpers ──────────────────────────────────────────────
 function getButtonStyles(
   style: AlertButtonStyle | undefined,
   isOnly: boolean,
   index: number,
-  total: number
+  total: number,
+  Colors: any,
+  isDark: boolean
 ) {
   const base: any = {
     flex: 1,
@@ -81,7 +86,7 @@ function getButtonStyles(
   if (style === "cancel") {
     return {
       ...base,
-      backgroundColor: "#F3F4F6",
+      backgroundColor: Colors.light,
       borderWidth: 1,
       borderColor: Colors.border,
     };
@@ -95,7 +100,7 @@ function getButtonStyles(
   }
   return {
     ...base,
-    backgroundColor: "#F3F4F6",
+    backgroundColor: Colors.light,
     borderWidth: 1,
     borderColor: Colors.border,
   };
@@ -105,15 +110,19 @@ function getButtonTextColor(
   style: AlertButtonStyle | undefined,
   isOnly: boolean,
   index: number,
-  total: number
+  total: number,
+  Colors: any,
+  isDark: boolean
 ): string {
   if (style === "destructive") return "#FFF";
   if (style === "cancel") return Colors.text;
-  if (isOnly || index === total - 1) return "#FFF";
+  if (isOnly || index === total - 1) return isDark ? Colors.background : "#FFF";
   return Colors.text;
 }
 
 export default function GlobalCustomAlert() {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const { visible, title, message, buttons, type, hide } = useAlertStore();
 
   // ─── Animations ────────────────────────────────────────────────────
@@ -151,13 +160,11 @@ export default function GlobalCustomAlert() {
 
   const handlePress = (btn: AlertButton) => {
     hide();
-    // Small delay so hide animation fires before callback
     setTimeout(() => btn.onPress?.(), 80);
   };
 
-  const icon = ICON_CONFIG[type] ?? ICON_CONFIG.info;
+  const icon = getIconConfig(type, Colors, isDark);
 
-  // Sort buttons: cancel first, destructive/default last
   const sortedButtons = [...buttons].sort((a, b) => {
     if (a.style === "cancel") return -1;
     if (b.style === "cancel") return 1;
@@ -171,7 +178,6 @@ export default function GlobalCustomAlert() {
       animationType="none"
       statusBarTranslucent
       onRequestClose={() => {
-        // If there's a cancel button, press it; otherwise just hide
         const cancelBtn = buttons.find((b) => b.style === "cancel");
         if (cancelBtn) {
           handlePress(cancelBtn);
@@ -214,13 +220,17 @@ export default function GlobalCustomAlert() {
                 btn.style,
                 isOnly,
                 i,
-                sortedButtons.length
+                sortedButtons.length,
+                Colors,
+                isDark
               );
               const textColor = getButtonTextColor(
                 btn.style,
                 isOnly,
                 i,
-                sortedButtons.length
+                sortedButtons.length,
+                Colors,
+                isDark
               );
 
               return (
@@ -243,7 +253,7 @@ export default function GlobalCustomAlert() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.55)",
@@ -253,7 +263,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     width: MODAL_WIDTH,
-    backgroundColor: "#FFF",
+    backgroundColor: Colors.surface,
     borderRadius: 24,
     paddingTop: 28,
     paddingBottom: 20,
@@ -264,6 +274,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 30,
     elevation: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   iconCircle: {
     width: 64,

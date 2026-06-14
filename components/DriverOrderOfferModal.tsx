@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { OrderOffer } from '@/store/useSocketStore';
 
 interface DriverOrderOfferModalProps {
@@ -28,6 +28,8 @@ export default function DriverOrderOfferModal({
   onDecline,
   onExpire,
 }: DriverOrderOfferModalProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const expiryHandledRef = useRef<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
@@ -77,7 +79,7 @@ export default function DriverOrderOfferModal({
         <View style={styles.modal}>
           <View style={styles.header}>
             <View style={styles.headerBadge}>
-              <Ionicons name="flash" size={18} color="#FFF" />
+              <Ionicons name="flash" size={18} color={isDark ? Colors.background : "#FFF"} />
               <Text style={styles.headerBadgeText}>New Delivery Offer</Text>
             </View>
             <Text style={styles.countdown}>{secondsLeft}s</Text>
@@ -96,7 +98,7 @@ export default function DriverOrderOfferModal({
               <Text style={styles.metricLabel}>Distance</Text>
             </View>
             <View style={styles.metricCard}>
-              <Ionicons name="cash" size={18} color="#1E8E3E" />
+              <Ionicons name="cash" size={18} color={Colors.success} />
               <Text style={styles.metricValue}>
                 {typeof offer.earning === 'number' ? `Rs ${offer.earning}` : 'TBD'}
               </Text>
@@ -113,10 +115,10 @@ export default function DriverOrderOfferModal({
               disabled={isAccepting || isDeclining}
             >
               {isDeclining ? (
-                <ActivityIndicator size="small" color="#666" />
+                <ActivityIndicator size="small" color={Colors.textSecondary} />
               ) : (
                 <>
-                  <Ionicons name="close" size={18} color="#666" />
+                  <Ionicons name="close" size={18} color={Colors.text} />
                   <Text style={styles.secondaryButtonText}>Decline</Text>
                 </>
               )}
@@ -128,10 +130,10 @@ export default function DriverOrderOfferModal({
               disabled={isAccepting || isDeclining}
             >
               {isAccepting ? (
-                <ActivityIndicator size="small" color="#FFF" />
+                <ActivityIndicator size="small" color={isDark ? Colors.background : "#FFF"} />
               ) : (
                 <>
-                  <Ionicons name="checkmark-done" size={18} color="#FFF" />
+                  <Ionicons name="checkmark-done" size={18} color={isDark ? Colors.background : "#FFF"} />
                   <Text style={styles.primaryButtonText}>Accept</Text>
                 </>
               )}
@@ -143,7 +145,7 @@ export default function DriverOrderOfferModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(16, 24, 40, 0.62)',
@@ -153,7 +155,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.surface,
     borderRadius: 24,
     padding: 20,
     shadowColor: '#000',
@@ -180,17 +182,17 @@ const styles = StyleSheet.create({
   headerBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#FFF',
+    color: isDark ? Colors.background : '#FFF',
   },
   countdown: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#D93025',
+    color: Colors.danger,
   },
   restaurantName: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#111827',
+    color: Colors.text,
     marginBottom: 16,
   },
   metricRow: {
@@ -200,29 +202,29 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: isDark ? Colors.background : '#F8FAFC',
     borderRadius: 16,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   metricValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: Colors.text,
     marginTop: 10,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B7280',
+    color: Colors.textSecondary,
     marginTop: 4,
   },
   orderId: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.6,
-    color: '#6B7280',
+    color: Colors.muted,
     marginBottom: 20,
   },
   actions: {
@@ -245,23 +247,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: Colors.light,
     borderRadius: 14,
     paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: Colors.border,
   },
   primaryButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#FFF',
+    color: isDark ? Colors.background : '#FFF',
   },
   secondaryButtonText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#4B5563',
-  },
-  disabledButton: {
-    opacity: 0.6,
+    color: Colors.text,
   },
 });

@@ -6,6 +6,7 @@ import { showAlert } from "@/store/useAlertStore";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   PanResponder,
   ScrollView,
   StatusBar,
@@ -21,14 +22,16 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import * as Location from "expo-location";
-import { Colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
+import { DarkTheme, LightTheme } from "@/constants/colors";
 import { FontSize, Fonts } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
 import { AppUser } from "@/types/user";
 import { RiderWelcomeScreen } from "@/components/RiderWelcomeScreen";
 import { getSocket } from "@/lib/socket-client";
 import ApplicationStatusScreen from "@/components/ApplicationStatusScreen";
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
+import { useNotifications } from "@/hooks/useNotifications";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { useCancelActiveDelivery, useCompleteDelivery, useToggleDriverStatus, usePickupDelivery, useAcceptDelivery, useDeclineDelivery } from "@/hooks/useDriverDeliveries";
 import { useCurrentDelivery, useDriverEarnings, useOrderRoute } from "@/hooks/useDriverOrders";
@@ -37,6 +40,7 @@ import { useDeliveryProfile } from "@/hooks/useRiderInfo";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useSocketOrderOffers } from "@/hooks/useSocketOrders";
 import { NewOrderOfferModal } from "@/components/NewOrderOfferModal";
+import { useWalletBalance } from "@/hooks/useWallet";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -60,52 +64,64 @@ function decodePolyline(encoded: string): { latitude: number; longitude: number 
   return points;
 }
 
-// ─── Premium Google Maps Style ────────────────────────────────────────────────
-const PREMIUM_MAP_STYLE = [
-    { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
-    { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
-    { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
-    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
-    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-    { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
-    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
-    { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-    { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
-    { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
-    { featureType: 'transit.station', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
-    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+// ─── Premium Map Styles ────────────────────────────────────────────────
+const LIGHT_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#f5f5f5' }] },
+  { featureType: 'administrative.land_parcel', elementType: 'labels.text.fill', stylers: [{ color: '#bdbdbd' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#757575' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#dadada' }] },
+  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
+  { featureType: 'road.local', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+  { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#e5e5e5' }] },
+  { featureType: 'transit.station', elementType: 'geometry', stylers: [{ color: '#eeeeee' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c9c9c9' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#9e9e9e' }] },
+];
+
+const DARK_MAP_STYLE = [
+    { elementType: "geometry", stylers: [{ color: "#0D1B2A" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#0D1B2A" }] },
+    { elementType: "labels.text.fill", stylers: [{ color: "#778DA9" }] },
+    { featureType: "administrative", elementType: "geometry.stroke", stylers: [{ color: "#415A77" }] },
+    { featureType: "road", elementType: "geometry", stylers: [{ color: "#1B263B" }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#415A77" }] },
+    { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] },
 ];
 
 // ─── Haversine ETA calculator (fallback when Google API key is unavailable) ───
 function calculateHaversineEta(
-    lat1: number, lng1: number,
-    lat2: number, lng2: number,
-    avgSpeedKmh: number = 25
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+  avgSpeedKmh: number = 25
 ): string {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distanceKm = R * c * 1.4; // ~1.4x for road distance
-    const etaMinutes = Math.max(2, Math.round((distanceKm / avgSpeedKmh) * 60));
-    return `~${etaMinutes} min`;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distanceKm = R * c * 1.4; // ~1.4x for road distance
+  const etaMinutes = Math.max(2, Math.round((distanceKm / avgSpeedKmh) * 60));
+  return `~${etaMinutes} min`;
 }
 
 function DriverHomeContent() {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [otp, setOtp] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const mapRef = useRef<MapView>(null);
-  const [driverLocation, setDriverLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
   const [routeEta, setRouteEta] = useState<string | null>(null);
   const GOOGLE_MAPS_APIKEY = Constants.expoConfig?.extra?.googleMapsApiKey || '';
@@ -203,9 +219,12 @@ function DriverHomeContent() {
   const { data: deliveryProfile } = useDeliveryProfile();
   const { data: currentDelivery } = useCurrentDelivery();
   const { data: earnings, isLoading: earningsLoading } = useDriverEarnings();
-  
+  const { data: walletData } = useWalletBalance();
+  const { data: notificationsData } = useNotifications(1, 1);
+  const unreadCount = notificationsData?.unreadCount ?? 0;
+
   const { acceptedOrderId, setAcceptedOrder, trackingStatus, orderOffers, removeOrderOffer } = useSocketStore();
-  
+
   // Register socket listeners for order offers
   useSocketOrderOffers();
 
@@ -268,19 +287,19 @@ function DriverHomeContent() {
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=polyline`;
       const osrmRes = await fetch(osrmUrl);
       const osrmJson = await osrmRes.json();
-      
+
       if (osrmJson.routes?.length > 0) {
-          setRouteCoords(decodePolyline(osrmJson.routes[0].geometry));
-          setRouteEta(calculateHaversineEta(
-            origin.latitude, origin.longitude,
-            destination.latitude, destination.longitude
-          ));
+        setRouteCoords(decodePolyline(osrmJson.routes[0].geometry));
+        setRouteEta(calculateHaversineEta(
+          origin.latitude, origin.longitude,
+          destination.latitude, destination.longitude
+        ));
       } else {
-          setRouteCoords([origin, destination]);
-          setRouteEta(calculateHaversineEta(
-            origin.latitude, origin.longitude,
-            destination.latitude, destination.longitude
-          ));
+        setRouteCoords([origin, destination]);
+        setRouteEta(calculateHaversineEta(
+          origin.latitude, origin.longitude,
+          destination.latitude, destination.longitude
+        ));
       }
     } catch {
       setRouteCoords([origin, destination]);
@@ -301,8 +320,8 @@ function DriverHomeContent() {
     const dest = displayStatus === 'ON_THE_WAY' && routeData.dropoff
       ? { latitude: routeData.dropoff.lat, longitude: routeData.dropoff.lng }
       : routeData.pickup
-      ? { latitude: routeData.pickup.lat, longitude: routeData.pickup.lng }
-      : null;
+        ? { latitude: routeData.pickup.lat, longitude: routeData.pickup.lng }
+        : null;
     if (dest) {
       fetchRoute({ latitude: driverLocation.lat, longitude: driverLocation.lng }, dest);
     }
@@ -327,7 +346,7 @@ function DriverHomeContent() {
 
         // Tilt the camera into 3D isometric view shortly after bounding box completes
         setTimeout(() => {
-            mapRef.current?.animateCamera({ pitch: 55 });
+          mapRef.current?.animateCamera({ pitch: 55 });
         }, 1500);
       }, 400);
     }
@@ -365,6 +384,18 @@ function DriverHomeContent() {
     if (isBusy) return;
 
     const newStatus = isAvailable ? 'OFFLINE' : 'ONLINE';
+    
+    if (newStatus === 'ONLINE') {
+      const balance = walletData?.balance ?? 0;
+      if (balance < -500) {
+        showAlert(
+          "Go Online Blocked ⚠️",
+          `Your wallet balance (₹${balance.toFixed(2)}) is below the minimum allowed limit of -₹500.00. Please top up your wallet to clear Cash-on-Delivery debt before going online.`
+        );
+        return;
+      }
+    }
+
     toggleStatus(newStatus, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['delivery-profile'] });
@@ -496,15 +527,15 @@ function DriverHomeContent() {
   const currentOffer = pendingOffers[0] || null;
 
   // ─── Status indicator colors ───
-  const statusColor = isBusy ? Colors.secondary : isAvailable ? Colors.success : Colors.muted;
+  const statusColor = isBusy ? Colors.warning : isAvailable ? Colors.success : Colors.muted;
   const statusLabel = isBusy ? "BUSY" : isAvailable ? "ONLINE" : "OFFLINE";
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* NEW ORDER MODAL */}
-      <NewOrderOfferModal 
+      <NewOrderOfferModal
         key={currentOffer?.orderId}
         visible={pendingOffers.length > 0 && !hasActiveDelivery}
         order={currentOffer}
@@ -524,10 +555,10 @@ function DriverHomeContent() {
             showsMyLocationButton={false}
             showsBuildings={true}
             pitchEnabled={true}
-            userInterfaceStyle="light"
+            userInterfaceStyle={isDark ? "dark" : "light"}
             showsCompass={false}
             toolbarEnabled={false}
-            customMapStyle={PREMIUM_MAP_STYLE}
+            customMapStyle={isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE}
             initialRegion={{
               latitude: driverLocation.lat,
               longitude: driverLocation.lng,
@@ -551,10 +582,10 @@ function DriverHomeContent() {
             {/* Restaurant Pickup Marker */}
             {hasActiveDelivery && routeData?.pickup?.lat ? (
               <Marker
-                 coordinate={{ latitude: routeData.pickup.lat, longitude: routeData.pickup.lng }}
-                 title={routeData.pickup.name}
-                 description="Restaurant Pickup"
-                 anchor={{ x: 0.5, y: 1 }}
+                coordinate={{ latitude: routeData.pickup.lat, longitude: routeData.pickup.lng }}
+                title={routeData.pickup.name}
+                description="Restaurant Pickup"
+                anchor={{ x: 0.5, y: 1 }}
               >
                 <View style={styles.pinContainer}>
                   <View style={[styles.pinHead, { backgroundColor: Colors.warning }]}>
@@ -568,10 +599,10 @@ function DriverHomeContent() {
             {/* Customer Dropoff Marker */}
             {hasActiveDelivery && routeData?.dropoff?.lat ? (
               <Marker
-                 coordinate={{ latitude: routeData.dropoff.lat, longitude: routeData.dropoff.lng }}
-                 title={routeData.dropoff.name || 'Customer'}
-                 description="Customer Dropoff"
-                 anchor={{ x: 0.5, y: 1 }}
+                coordinate={{ latitude: routeData.dropoff.lat, longitude: routeData.dropoff.lng }}
+                title={routeData.dropoff.name || 'Customer'}
+                description="Customer Dropoff"
+                anchor={{ x: 0.5, y: 1 }}
               >
                 <View style={styles.pinContainer}>
                   <View style={[styles.pinHead, { backgroundColor: Colors.success }]}>
@@ -594,8 +625,8 @@ function DriverHomeContent() {
           </MapView>
         ) : (
           <View style={styles.mapPlaceholder}>
-             <ActivityIndicator size="large" color={Colors.primary} />
-             <Text style={styles.mapLoadingText}>Loading map...</Text>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.mapLoadingText}>Loading map...</Text>
           </View>
         )}
       </View>
@@ -615,6 +646,18 @@ function DriverHomeContent() {
           <Text style={[styles.floatingStatusText, { color: statusColor }]}>{statusLabel}</Text>
         </View>
       )}
+
+      {/* ═══ MAP OVERLAY: Notifications Floating Button ═══ */}
+      <TouchableOpacity
+        style={[styles.floatingNotificationButton, { top: insets.top + 12 }]}
+        onPress={() => router.push("/notifications" as any)}
+        activeOpacity={0.8}
+      >
+        <Ionicons name="notifications" size={20} color={isDark ? Colors.text : Colors.secondary} />
+        {unreadCount > 0 && (
+          <View style={styles.notificationDotBadge} />
+        )}
+      </TouchableOpacity>
 
       {/* ═══ INTERACTIVE BOTTOM SHEET ═══ */}
       <Animated.View
@@ -639,110 +682,122 @@ function DriverHomeContent() {
             scrollEventThrottle={16}
             bounces={false}
           >
-          {/* ─── Status & Toggle Card ─── */}
-          <View style={styles.statusCard}>
-            <View style={styles.statusHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.greeting}>Welcome Back 👋</Text>
-                <View style={styles.nameRow}>
-                   <Text style={styles.driverName}>Driver</Text>
-                   <View style={[styles.inlineStatusBadge, { backgroundColor: statusColor }]}>
+            {/* ─── Status & Toggle Card ─── */}
+            <View style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.greeting}>Welcome Back 👋</Text>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.driverName} numberOfLines={1}>
+                      {deliveryProfile?.user?.name || "Driver"}
+                    </Text>
+                    <View style={[styles.inlineStatusBadge, { backgroundColor: statusColor }]}>
                       <Text style={styles.inlineStatusText}>{statusLabel}</Text>
-                   </View>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.profilePicWrapper}>
+                  {deliveryProfile?.profilePic ? (
+                    <Image
+                      source={{ uri: deliveryProfile.profilePic }}
+                      style={styles.headerProfilePic}
+                    />
+                  ) : (
+                    <View style={styles.headerProfilePicPlaceholder}>
+                      <Ionicons name="person" size={24} color={Colors.primary} />
+                    </View>
+                  )}
+                  <View style={[styles.profileStatusDot, { backgroundColor: statusColor }]} />
                 </View>
               </View>
-              <View style={[styles.statusIndicator, { backgroundColor: statusColor }]}>
-                <Ionicons
-                  name={isBusy ? "bicycle" : isAvailable ? "checkmark-circle" : "close-circle"}
-                  size={22} color="#FFF"
-                />
-              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  {
+                    backgroundColor: isAvailable ? Colors.danger : Colors.success,
+                  },
+                  isTogglingStatus && { opacity: 0.6 },
+                  hasActiveDelivery && { opacity: 0.5, backgroundColor: Colors.secondary },
+                ]}
+                onPress={handleToggleStatus}
+                disabled={isTogglingStatus || hasActiveDelivery}
+                activeOpacity={0.8}
+              >
+                {isTogglingStatus ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name={hasActiveDelivery ? "bicycle" : isAvailable ? 'power' : 'power'}
+                      size={20} color="#FFF"
+                    />
+                    <Text style={styles.toggleText}>
+                      {hasActiveDelivery ? "On Delivery" : isBusy ? "Syncing..." : isAvailable ? 'Go Offline' : 'Go Online'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {(isAvailable || isBusy) && (
+                <View style={styles.locationStatus}>
+                  <View style={[styles.pulsingDot, { backgroundColor: isTracking ? Colors.success : Colors.warning }]} />
+                  <Text style={[styles.locationStatusText, { color: isTracking ? Colors.success : Colors.warning }]}>
+                    {hasActiveDelivery
+                      ? isTracking ? 'Live tracking active' : 'Starting tracking...'
+                      : isBusy ? 'Syncing delivery state...'
+                        : isTracking ? 'Location sharing active' : 'Starting location...'}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            <TouchableOpacity
-              style={[
-                styles.toggleButton,
-                {
-                  backgroundColor: isAvailable ? Colors.danger : Colors.success,
-                },
-                isTogglingStatus && { opacity: 0.6 },
-                hasActiveDelivery && { opacity: 0.5, backgroundColor: Colors.secondary },
-              ]}
-              onPress={handleToggleStatus}
-              disabled={isTogglingStatus || hasActiveDelivery}
-              activeOpacity={0.8}
-            >
-              {isTogglingStatus ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <>
-                  <Ionicons
-                    name={hasActiveDelivery ? "bicycle" : isAvailable ? 'power' : 'power'}
-                    size={20} color="#FFF"
-                  />
-                  <Text style={styles.toggleText}>
-                    {hasActiveDelivery ? "On Delivery" : isBusy ? "Syncing..." : isAvailable ? 'Go Offline' : 'Go Online'}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* ─── Premium Earnings Dashboard (moved to wallet tab) ─── */}
 
-            {(isAvailable || isBusy) && (
-              <View style={styles.locationStatus}>
-                <View style={[styles.pulsingDot, { backgroundColor: isTracking ? Colors.success : Colors.warning }]} />
-                <Text style={[styles.locationStatusText, { color: isTracking ? Colors.success : Colors.warning }]}>
-                  {hasActiveDelivery
-                    ? isTracking ? 'Live tracking active' : 'Starting tracking...'
-                    : isBusy ? 'Syncing delivery state...'
-                    : isTracking ? 'Location sharing active' : 'Starting location...'}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* ─── Premium Earnings Dashboard (moved to wallet tab) ─── */}
-
-          {/* ─── Active Delivery Card ─── */}
-          {activeDelivery && (
-            <View style={styles.currentDeliveryCard}>
-              {/* Card Header */}
-              <View style={styles.cardTitleRow}>
-                <View style={styles.cardTitleLeft}>
-                   <View style={styles.cardTitleIconBg}>
-                     <Ionicons name="navigate" size={18} color={Colors.primary} />
-                   </View>
-                   <Text style={styles.cardTitle}>Active Delivery</Text>
-                   {/* COD Badge */}
-                   {activeDelivery.paymentMode === 'COD' && (
-                     <View style={styles.codBadge}>
-                       <Ionicons name="cash-outline" size={11} color="#7B4F00" />
-                       <Text style={styles.codBadgeText}>CASH</Text>
-                     </View>
-                   )}
+            {/* ─── Active Delivery Card ─── */}
+            {activeDelivery && (
+              <View style={styles.currentDeliveryCard}>
+                {/* Card Header */}
+                <View style={styles.cardTitleRow}>
+                  <View style={styles.cardTitleLeft}>
+                    <View style={styles.cardTitleIconBg}>
+                      <Ionicons name="navigate" size={18} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.cardTitle}>Active Delivery</Text>
+                  </View>
+                  <TouchableOpacity onPress={handleNavigate} style={styles.navigateBtn} activeOpacity={0.8}>
+                    <Ionicons name="compass" size={15} color="#FFF" />
+                    <Text style={styles.navigateBtnText}>Navigate</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={handleNavigate} style={styles.navigateBtn} activeOpacity={0.8}>
-                   <Ionicons name="compass" size={15} color="#FFF" />
-                   <Text style={styles.navigateBtnText}>Navigate</Text>
-                </TouchableOpacity>
-              </View>
 
-              {/* Delivery Details */}
-              <View style={styles.deliveryInfo}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Customer</Text>
-                  <Text style={styles.infoValue}>{(activeDelivery as any).customerAddress?.receiverName || activeDelivery.customer?.name || "Customer"}</Text>
-                </View>
-                <View style={styles.divider} />
-                
-                {/* ─── Call Customer Button ─── */}
-                <View style={styles.infoRow}>
+                {/* COD Badge */}
+                {activeDelivery.paymentMode === 'COD' && (
+                  <View style={styles.codBadgeRow}>
+                    <View style={styles.codBadge}>
+                      <Ionicons name="cash-outline" size={11} color="#7B4F00" />
+                      <Text style={styles.codBadgeText}>CASH</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Delivery Details */}
+                <View style={styles.deliveryInfo}>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Customer</Text>
+                    <Text style={styles.infoValue}>{(activeDelivery as any).customerAddress?.receiverName || activeDelivery.customer?.name || "Customer"}</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  {/* ─── Call Customer Button ─── */}
+                  <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Contact</Text>
                     <TouchableOpacity
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Colors.success, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 12 }}
                       onPress={() => {
                         const targetPhone = (activeDelivery as any).customerAddress?.receiverPhone || activeDelivery.customer?.phoneNumber;
                         if (targetPhone) {
-                          Linking.openURL(`tel:${targetPhone}`); 
+                          Linking.openURL(`tel:${targetPhone}`);
                         } else {
                           showAlert("Error", "No contact phone number available for this delivery.");
                         }
@@ -752,189 +807,189 @@ function DriverHomeContent() {
                       <Ionicons name="call" size={14} color="#FFF" />
                       <Text style={{ color: '#FFF', fontFamily: Fonts.brandBold, fontSize: 12 }}>Call Customer</Text>
                     </TouchableOpacity>
-                </View>
-                <View style={styles.divider} />
+                  </View>
+                  <View style={styles.divider} />
 
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Restaurant</Text>
-                  <Text style={styles.infoValue}>{activeDelivery.restaurant?.name || "Restaurant"}</Text>
-                </View>
-                <View style={styles.divider} />
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Restaurant</Text>
+                    <Text style={styles.infoValue}>{activeDelivery.restaurant?.name || "Restaurant"}</Text>
+                  </View>
+                  <View style={styles.divider} />
 
-                {/* ─── Order Items ─── */}
-                {activeDelivery.items && activeDelivery.items.length > 0 && (
-                  <>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Items</Text>
-                      <View style={{ alignItems: 'flex-end', flex: 1, paddingLeft: 16 }}>
-                        {activeDelivery.items.map((item: any, idx: number) => (
-                          <Text key={idx} style={[styles.infoValue, { fontSize: 13, marginBottom: 2 }]} numberOfLines={1}>
-                            {item.quantity}x {item.menuItem?.name || 'Item'}
-                          </Text>
-                        ))}
+                  {/* ─── Order Items ─── */}
+                  {activeDelivery.items && activeDelivery.items.length > 0 && (
+                    <>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Items</Text>
+                        <View style={{ alignItems: 'flex-end', flex: 1, paddingLeft: 16 }}>
+                          {activeDelivery.items.map((item: any, idx: number) => (
+                            <Text key={idx} style={[styles.infoValue, { fontSize: 13, marginBottom: 2 }]} numberOfLines={1}>
+                              {item.quantity}x {item.menuItem?.name || 'Item'}
+                            </Text>
+                          ))}
+                        </View>
                       </View>
-                    </View>
-                    <View style={styles.divider} />
-                  </>
-                )}
+                      <View style={styles.divider} />
+                    </>
+                  )}
 
-                {/* ─── Order Total ─── */}
-                {activeDelivery.totalAmount ? (
-                  <>
-                    <View style={styles.infoRow}>
-                      <Text style={styles.infoLabel}>Bill Amount</Text>
-                      <Text style={[styles.infoValue, { color: Colors.success, fontFamily: Fonts.brandBlack, fontSize: 16 }]}>
-                        ₹{activeDelivery.totalAmount.toFixed(2)}
+                  {/* ─── Order Total ─── */}
+                  {activeDelivery.totalAmount ? (
+                    <>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoLabel}>Bill Amount</Text>
+                        <Text style={[styles.infoValue, { color: Colors.success, fontFamily: Fonts.brandBlack, fontSize: 16 }]}>
+                          ₹{activeDelivery.totalAmount.toFixed(2)}
+                        </Text>
+                      </View>
+                      <View style={styles.divider} />
+                    </>
+                  ) : null}
+                  {/* ─── COD Cash Collection Banner (shown when ON_THE_WAY) ─── */}
+                  {activeDelivery.paymentMode === 'COD' && displayStatus === 'ON_THE_WAY' && activeDelivery.totalAmount ? (
+                    <View style={styles.codBanner}>
+                      <View style={styles.codBannerLeft}>
+                        <Ionicons name="cash" size={22} color="#7B4F00" />
+                        <View>
+                          <Text style={styles.codBannerTitle}>Collect Cash from Customer</Text>
+                          <Text style={styles.codBannerAmount}>₹{activeDelivery.totalAmount.toFixed(0)}</Text>
+                        </View>
+                      </View>
+                      <Ionicons name="alert-circle" size={18} color="#7B4F00" />
+                    </View>
+                  ) : null}
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Status</Text>
+                    <View style={styles.statusChip}>
+                      <Text style={styles.statusChipText}>
+                        {displayStatus.replace('_', ' ')}
                       </Text>
                     </View>
-                    <View style={styles.divider} />
-                  </>
-                ) : null}
-                {/* ─── COD Cash Collection Banner (shown when ON_THE_WAY) ─── */}
-                {activeDelivery.paymentMode === 'COD' && displayStatus === 'ON_THE_WAY' && activeDelivery.totalAmount ? (
-                  <View style={styles.codBanner}>
-                    <View style={styles.codBannerLeft}>
-                      <Ionicons name="cash" size={22} color="#7B4F00" />
-                      <View>
-                        <Text style={styles.codBannerTitle}>Collect Cash from Customer</Text>
-                        <Text style={styles.codBannerAmount}>₹{activeDelivery.totalAmount.toFixed(0)}</Text>
+                  </View>
+
+                  {displayStatus !== 'ON_THE_WAY' && displayStatus !== 'DELIVERED' && routeData?.pickup?.address ? (
+                    <View style={styles.routeInfoBlock}>
+                      <View style={styles.routeInfoRow}>
+                        <View style={[styles.routeDot, { backgroundColor: Colors.warning }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.routeInfoLabel}>PICKUP FROM</Text>
+                          <Text style={styles.routeInfoValue}>{routeData.pickup.address}</Text>
+                        </View>
                       </View>
                     </View>
-                    <Ionicons name="alert-circle" size={18} color="#7B4F00" />
-                  </View>
-                ) : null}
+                  ) : null}
 
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Status</Text>
-                  <View style={styles.statusChip}>
-                    <Text style={styles.statusChipText}>
-                      {displayStatus.replace('_', ' ')}
-                    </Text>
-                  </View>
+                  {displayStatus === 'ON_THE_WAY' && routeData?.dropoff?.address ? (
+                    <View style={styles.routeInfoBlock}>
+                      <View style={styles.routeInfoRow}>
+                        <View style={[styles.routeDot, { backgroundColor: Colors.success }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.routeInfoLabel}>DELIVER TO</Text>
+                          <Text style={styles.routeInfoValue}>{routeData.dropoff.address}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : null}
                 </View>
 
-                {displayStatus !== 'ON_THE_WAY' && displayStatus !== 'DELIVERED' && routeData?.pickup?.address ? (
-                  <View style={styles.routeInfoBlock}>
-                    <View style={styles.routeInfoRow}>
-                      <View style={[styles.routeDot, { backgroundColor: Colors.warning }]} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.routeInfoLabel}>PICKUP FROM</Text>
-                        <Text style={styles.routeInfoValue}>{routeData.pickup.address}</Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : null}
-                
-                {displayStatus === 'ON_THE_WAY' && routeData?.dropoff?.address ? (
-                  <View style={styles.routeInfoBlock}>
-                    <View style={styles.routeInfoRow}>
-                      <View style={[styles.routeDot, { backgroundColor: Colors.success }]} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.routeInfoLabel}>DELIVER TO</Text>
-                        <Text style={styles.routeInfoValue}>{routeData.dropoff.address}</Text>
-                      </View>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.deliveryActionGroup}>
-                {displayStatus !== 'ON_THE_WAY' && displayStatus !== 'DELIVERED' ? (
-                  <TouchableOpacity
-                    style={[
-                      styles.deliveryActionBtn,
-                      { backgroundColor: Colors.primary },
-                      isPickingUp && { opacity: 0.6 },
-                    ]}
-                    onPress={handlePickupDelivery}
-                    disabled={isPickingUp}
-                    activeOpacity={0.8}
-                  >
-                    {isPickingUp ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="bag-check" size={18} color="#FFF" />
-                        <Text style={styles.deliveryActionText}>Confirm Pickup</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                ) : (
-                  <View style={{ gap: 12 }}>
-                    {/* COD: Cash confirmation checkbox */}
-                    {activeDelivery.paymentMode === 'COD' && (
-                      <TouchableOpacity
-                        style={styles.cashConfirmRow}
-                        onPress={() => setCashConfirmed(prev => !prev)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.checkbox, cashConfirmed && styles.checkboxChecked]}>
-                          {cashConfirmed && <Ionicons name="checkmark" size={13} color="#FFF" />}
-                        </View>
-                        <Text style={styles.cashConfirmText}>
-                          I have collected{' '}
-                          <Text style={{ fontFamily: Fonts.brandBold, color: Colors.text }}>
-                            ₹{(activeDelivery.totalAmount ?? 0).toFixed(0)}
-                          </Text>{' '}cash from the customer
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <Text style={styles.otpLabel}>Enter Delivery OTP</Text>
-                    <TextInput
-                      value={otp}
-                      onChangeText={setOtp}
-                      placeholder="Enter 4-digit OTP"
-                      placeholderTextColor={Colors.muted}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      style={[
-                        styles.otpInput,
-                        activeDelivery.paymentMode === 'COD' && !cashConfirmed && styles.otpInputDisabled,
-                      ]}
-                      editable={activeDelivery.paymentMode !== 'COD' || cashConfirmed}
-                    />
+                {/* Action Buttons */}
+                <View style={styles.deliveryActionGroup}>
+                  {displayStatus !== 'ON_THE_WAY' && displayStatus !== 'DELIVERED' ? (
                     <TouchableOpacity
                       style={[
                         styles.deliveryActionBtn,
-                        { backgroundColor: Colors.success },
-                        (otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)) && { opacity: 0.5 },
+                        { backgroundColor: Colors.primary },
+                        isPickingUp && { opacity: 0.6 },
                       ]}
-                      onPress={handleCompleteDelivery}
-                      disabled={otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)}
+                      onPress={handlePickupDelivery}
+                      disabled={isPickingUp}
                       activeOpacity={0.8}
                     >
-                      {isCompletingDelivery ? (
+                      {isPickingUp ? (
                         <ActivityIndicator size="small" color="#FFF" />
                       ) : (
                         <>
-                          <Ionicons name="checkmark-circle" size={18} color="#FFF" />
-                          <Text style={styles.deliveryActionText}>Complete Delivery</Text>
+                          <Ionicons name="bag-check" size={18} color="#FFF" />
+                          <Text style={styles.deliveryActionText}>Confirm Pickup</Text>
                         </>
                       )}
                     </TouchableOpacity>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={[styles.cancelDeliveryBtn, isCancellingDelivery && { opacity: 0.6 }]}
-                  onPress={handleCancelActiveDelivery}
-                  disabled={isCancellingDelivery}
-                  activeOpacity={0.8}
-                >
-                  {isCancellingDelivery ? (
-                    <ActivityIndicator size="small" color={Colors.danger} />
                   ) : (
-                    <>
-                      <Ionicons name="close-circle" size={16} color={Colors.danger} />
-                      <Text style={[styles.deliveryActionText, { color: Colors.danger }]}>Cancel Delivery</Text>
-                    </>
+                    <View style={{ gap: 12 }}>
+                      {/* COD: Cash confirmation checkbox */}
+                      {activeDelivery.paymentMode === 'COD' && (
+                        <TouchableOpacity
+                          style={styles.cashConfirmRow}
+                          onPress={() => setCashConfirmed(prev => !prev)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[styles.checkbox, cashConfirmed && styles.checkboxChecked]}>
+                            {cashConfirmed && <Ionicons name="checkmark" size={13} color="#FFF" />}
+                          </View>
+                          <Text style={styles.cashConfirmText}>
+                            I have collected{' '}
+                            <Text style={{ fontFamily: Fonts.brandBold, color: Colors.text }}>
+                              ₹{(activeDelivery.totalAmount ?? 0).toFixed(0)}
+                            </Text>{' '}cash from the customer
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <Text style={styles.otpLabel}>Enter Delivery OTP</Text>
+                      <TextInput
+                        value={otp}
+                        onChangeText={setOtp}
+                        placeholder="Enter 4-digit OTP"
+                        placeholderTextColor={Colors.muted}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        style={[
+                          styles.otpInput,
+                          activeDelivery.paymentMode === 'COD' && !cashConfirmed && styles.otpInputDisabled,
+                        ]}
+                        editable={activeDelivery.paymentMode !== 'COD' || cashConfirmed}
+                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.deliveryActionBtn,
+                          { backgroundColor: Colors.success },
+                          (otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)) && { opacity: 0.5 },
+                        ]}
+                        onPress={handleCompleteDelivery}
+                        disabled={otp.trim().length < 4 || isCompletingDelivery || (activeDelivery.paymentMode === 'COD' && !cashConfirmed)}
+                        activeOpacity={0.8}
+                      >
+                        {isCompletingDelivery ? (
+                          <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
+                          <>
+                            <Ionicons name="checkmark-circle" size={18} color="#FFF" />
+                            <Text style={styles.deliveryActionText}>Complete Delivery</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   )}
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.cancelDeliveryBtn, isCancellingDelivery && { opacity: 0.6 }]}
+                    onPress={handleCancelActiveDelivery}
+                    disabled={isCancellingDelivery}
+                    activeOpacity={0.8}
+                  >
+                    {isCancellingDelivery ? (
+                      <ActivityIndicator size="small" color={Colors.danger} />
+                    ) : (
+                      <>
+                        <Ionicons name="close-circle" size={16} color={Colors.danger} />
+                        <Text style={[styles.deliveryActionText, { color: Colors.danger }]}>Cancel Delivery</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
-        </ScrollView>
+            )}
+          </ScrollView>
         </View>
       </Animated.View>
     </View>
@@ -942,7 +997,8 @@ function DriverHomeContent() {
 }
 
 export default function HomeScreen() {
-   const insets = useSafeAreaInsets();
+  const { Colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { appliedForRider, _hasHydrated } = usePartnerStore();
   const { data: session } = authClient.useSession();
   const user = session?.user as AppUser | undefined;
@@ -971,11 +1027,12 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Tabs.Screen 
-        options={{ 
+      <Tabs.Screen
+        options={{
           tabBarStyle: {
-            backgroundColor: Colors.primary,
-            borderTopWidth: 0,
+            backgroundColor: Colors.background,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
             height: 64 + insets.bottom,
             paddingBottom: 10 + insets.bottom,
             paddingTop: 6,
@@ -985,7 +1042,7 @@ export default function HomeScreen() {
             shadowOpacity: 0.06,
             shadowRadius: 8,
           }
-        }} 
+        }}
       />
       <DriverHomeContent />
     </>
@@ -995,7 +1052,7 @@ export default function HomeScreen() {
 // ═══════════════════════════════════════════════════════════════
 // STYLES — Premium, Clean, Uber/Ola-grade
 // ═══════════════════════════════════════════════════════════════
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,
@@ -1045,7 +1102,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 77, 77, 0.12)',
+    backgroundColor: isDark ? Colors.primary + '20' : 'rgba(0, 77, 77, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1094,7 +1151,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.background,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1114,6 +1171,30 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.brandBold,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+  },
+  floatingNotificationButton: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  notificationDotBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.primary,
   },
 
   // ─── Bottom Sheet ─────────────────────────
@@ -1210,6 +1291,36 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  profilePicWrapper: {
+    position: 'relative',
+  },
+  headerProfilePic: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  headerProfilePicPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  profileStatusDot: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: Colors.background,
+  },
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1265,6 +1376,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  codBadgeRow: {
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+    marginTop: -8,
+    marginLeft: 46,
+  },
   cardTitleLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1284,23 +1401,23 @@ const styles = StyleSheet.create({
     color: Colors.text,
   },
   navigateBtn: {
-     flexDirection: 'row',
-     alignItems: 'center',
-     gap: 5,
-     backgroundColor: Colors.primary,
-     paddingVertical: 8,
-     paddingHorizontal: 14,
-     borderRadius: 20,
-     shadowColor: Colors.primary,
-     shadowOffset: { width: 0, height: 2 },
-     shadowOpacity: 0.25,
-     shadowRadius: 4,
-     elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   navigateBtnText: {
-     color: '#FFF',
-     fontSize: FontSize.xs,
-     fontFamily: Fonts.brandBold,
+    color: '#FFF',
+    fontSize: FontSize.xs,
+    fontFamily: Fonts.brandBold,
   },
   deliveryInfo: {
     marginBottom: 16,
@@ -1375,8 +1492,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFF3CD',
-    borderColor: '#F5C842',
+    backgroundColor: isDark ? '#2D2305' : '#FFF3CD',
+    borderColor: isDark ? '#7A5E00' : '#F5C842',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -1385,16 +1502,16 @@ const styles = StyleSheet.create({
   codBadgeText: {
     fontSize: 10,
     fontFamily: Fonts.brandBold,
-    color: '#7B4F00',
+    color: isDark ? '#FCD34D' : '#7B4F00',
     letterSpacing: 0.5,
   },
   codBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFBEB',
+    backgroundColor: isDark ? '#2D2305' : '#FFFBEB',
     borderWidth: 1.5,
-    borderColor: '#F5C842',
+    borderColor: isDark ? '#7A5E00' : '#F5C842',
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
@@ -1407,23 +1524,23 @@ const styles = StyleSheet.create({
   codBannerTitle: {
     fontSize: FontSize.xs,
     fontFamily: Fonts.brandMedium,
-    color: '#7B4F00',
+    color: isDark ? '#FCD34D' : '#7B4F00',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   codBannerAmount: {
     fontSize: 22,
     fontFamily: Fonts.brandBold,
-    color: '#7B4F00',
+    color: isDark ? '#FCD34D' : '#7B4F00',
     marginTop: 2,
   },
   cashConfirmRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: isDark ? '#2D2305' : '#FFFBEB',
     borderWidth: 1,
-    borderColor: '#F5C842',
+    borderColor: isDark ? '#7A5E00' : '#F5C842',
     borderRadius: 12,
     padding: 12,
   },

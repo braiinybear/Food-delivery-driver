@@ -1,4 +1,4 @@
-import { Colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { Fonts, FontSize } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
 import { showAlert } from "@/store/useAlertStore";
@@ -19,6 +19,8 @@ import {
 } from "react-native";
 
 export default function Register() {
+    const { Colors, isDark } = useTheme();
+    const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
     const [isLoading, setIsLoading] = useState(false);
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
@@ -184,18 +186,18 @@ export default function Register() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 24,
         paddingBottom: 40,
+        justifyContent: "center",
         backgroundColor: Colors.background,
     },
     logo: {
-        width: 140,
-        height: 140,
+        width: 120,
+        height: 120,
         alignSelf: "center",
-        marginTop: 60,
         marginBottom: 20,
     },
     headerContainer: {
@@ -248,14 +250,14 @@ const styles = StyleSheet.create({
 
     // ── Buttons ──────────────────────────────────────────────
     primaryButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: isDark ? Colors.primary : Colors.secondary,
         paddingVertical: 16,
         borderRadius: 18,
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
-        shadowColor: Colors.primary,
+        shadowColor: isDark ? Colors.primary : Colors.secondary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,

@@ -13,6 +13,9 @@ export interface AppUser {
   image?: string | null;
   phoneNumber?: string | null;
   phoneNumberVerified?: boolean;
+  dob?: string | null;
+  gender?: string | null;
+  isVeg?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

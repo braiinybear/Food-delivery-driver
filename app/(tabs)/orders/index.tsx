@@ -15,7 +15,7 @@ import { showAlert } from '@/store/useAlertStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/colors';
+import { useTheme } from '@/context/ThemeContext';
 import { useAcceptDelivery, useDeclineDelivery } from '@/hooks/useDriverDeliveries';
 import { AvailableOrder, useAvailableOrders, useCurrentDelivery } from '@/hooks/useDriverOrders';
 import { OrderOffer, useSocketStore } from '@/store/useSocketStore';
@@ -44,6 +44,8 @@ const formatTime = (minutes: number | null | undefined) => {
 };
 
 export default function DriverOrdersScreen() {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const router = useRouter();
   const { data: response, isLoading, refetch } = useAvailableOrders();
   const { data: activeDeliveryData } = useCurrentDelivery();
@@ -164,7 +166,7 @@ export default function DriverOrdersScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? Colors.background : Colors.secondary} />
 
       {isInitialLoading ? (
         <View style={styles.loaderContainer}>
@@ -286,6 +288,8 @@ function LiveOfferCard({
   onAccept,
   onDecline,
 }: LiveOfferCardProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const distance =
     typeof offer.distanceKm === 'number'
       ? offer.distanceKm
@@ -362,6 +366,8 @@ function FallbackOrderCard({
   onAccept,
   onDecline,
 }: FallbackOrderCardProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   return (
     <View style={styles.card}>
       <Pressable
@@ -452,6 +458,8 @@ function ActionButton({
   onPress,
   variant,
 }: ActionButtonProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const isPrimary = variant === 'primary';
 
   return (
@@ -465,10 +473,10 @@ function ActionButton({
       disabled={disabled}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={isPrimary ? '#FFF' : '#666'} />
+        <ActivityIndicator size="small" color={isPrimary ? (isDark ? Colors.background : '#FFF') : (isDark ? Colors.textSecondary : '#666')} />
       ) : (
         <>
-          <Ionicons name={icon} size={16} color={isPrimary ? '#FFF' : '#666'} />
+          <Ionicons name={icon} size={16} color={isPrimary ? (isDark ? Colors.background : '#FFF') : (isDark ? Colors.textSecondary : '#666')} />
           <Text
             style={[
               styles.actionButtonText,
@@ -500,6 +508,8 @@ function OrderDetailModal({
   onAccept,
   onDecline,
 }: OrderDetailModalProps) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   if (!order) {
     return null;
   }
@@ -596,6 +606,8 @@ function OrderDetailModal({
 }
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   return (
     <View style={styles.infoBlock}>
       <Text style={styles.infoBlockLabel}>{label}</Text>
@@ -604,10 +616,10 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.background,
   },
   loaderContainer: {
     flex: 1,
@@ -680,7 +692,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.brandMedium,
   },
   card: {
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface,
     borderRadius: 18,
     padding: 16,
     marginBottom: 16,
@@ -693,8 +705,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   liveOfferCard: {
-    borderColor: Colors.primary.slice(0, 7) + '30',
-    backgroundColor: '#FFFFFF',
+    borderColor: isDark ? Colors.primary : Colors.primary.slice(0, 7) + '30',
+    backgroundColor: Colors.surface,
   },
   liveOfferHeader: {
     flexDirection: 'row',
@@ -810,11 +822,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   actionButtonPrimary: {
-    backgroundColor: Colors.primary,
-    shadowColor: Colors.primary,
+    backgroundColor: isDark ? Colors.primary : Colors.secondary,
   },
   actionButtonSecondary: {
-    backgroundColor: Colors.surface,
+    backgroundColor: isDark ? Colors.surface : Colors.light,
     borderWidth: 1,
     borderColor: Colors.border,
     shadowColor: '#000',
@@ -824,7 +835,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.brandBold,
   },
   actionButtonTextPrimary: {
-    color: '#FFF',
+    color: isDark ? Colors.background : '#FFF',
   },
   actionButtonTextSecondary: {
     color: Colors.textSecondary,
@@ -918,7 +929,7 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',

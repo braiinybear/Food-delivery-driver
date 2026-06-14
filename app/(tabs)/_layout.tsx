@@ -1,15 +1,16 @@
 import * as NavigationBar from "expo-navigation-bar";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, Tabs } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Platform, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Colors } from "../../constants/colors";
+import { useTheme } from "../../context/ThemeContext";
 
 import { useAcceptDelivery, useDeclineDelivery } from "../../hooks/useDriverDeliveries";
 import { useSocketStore } from "../../store/useSocketStore";
 
 export default function TabsLayout() {
+  const { Colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { mutate: acceptDelivery } = useAcceptDelivery();
   const { mutate: declineDelivery } = useDeclineDelivery();
@@ -28,10 +29,10 @@ export default function TabsLayout() {
       return;
     }
     void NavigationBar.setPositionAsync("relative");
-    void NavigationBar.setBackgroundColorAsync("#E5E7EB");
-    void NavigationBar.setBorderColorAsync("#D1D5DB");
-    void NavigationBar.setButtonStyleAsync("dark");
-  }, []);
+    void NavigationBar.setBackgroundColorAsync(Colors.background);
+    void NavigationBar.setBorderColorAsync(Colors.border);
+    void NavigationBar.setButtonStyleAsync(isDark ? "light" : "dark");
+  }, [isDark, Colors]);
   const BackButton = () => (
     <TouchableOpacity
       onPress={() => {
@@ -45,7 +46,7 @@ export default function TabsLayout() {
         justifyContent: "center",
       }}
     >
-      <Ionicons name="arrow-back" size={28} color={Colors.white} />
+      <MaterialCommunityIcons name="keyboard-backspace" size={28} color={Colors.white} />
     </TouchableOpacity>
   );
 
@@ -81,11 +82,24 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: Colors.white,
-          tabBarInactiveTintColor: "rgba(255,255,255,0.5)",
+          headerStyle: {
+            backgroundColor: isDark ? Colors.background : Colors.secondary,
+            borderBottomWidth: 1,
+            borderBottomColor: isDark ? Colors.border : Colors.text + "08",
+          },
+          headerTintColor: Colors.white,
+          headerTitleStyle: {
+            fontSize: 18,
+            fontFamily: 'Nunito_700Bold',
+            color: Colors.white,
+          },
+          headerTitleAlign: "center",
+          tabBarActiveTintColor: Colors.primary,
+          tabBarInactiveTintColor: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)",
           tabBarStyle: {
-            backgroundColor: Colors.primary,
-            borderTopWidth: 0,
+            backgroundColor: Colors.background,
+            borderTopWidth: 1,
+            borderTopColor: Colors.border,
             height: 64 + insets.bottom,
             paddingBottom: 10 + insets.bottom,
             paddingTop: 6,
@@ -117,17 +131,6 @@ export default function TabsLayout() {
             title: "Orders",
             headerShown: true,
             headerLeft: () => <BackButton />,
-            headerStyle: {
-              backgroundColor: Colors.primary,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.text + "08",
-            },
-            headerTitleStyle: {
-              fontSize: 18,
-              fontWeight: "700",
-              color: Colors.white,
-            },
-            headerTitleAlign: "left",
             tabBarBadge: orderOffers.length > 0 ? orderOffers.length : undefined,
             tabBarBadgeStyle: {
               backgroundColor: Colors.secondary,
@@ -146,17 +149,6 @@ export default function TabsLayout() {
             title: "Profile",
             headerShown: true,
             headerLeft: () => <BackButton />,
-            headerStyle: {
-              backgroundColor: Colors.primary,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.text + "08",
-            },
-            headerTitleStyle: {
-              fontSize: 18,
-              fontWeight: "700",
-              color: Colors.white,
-            },
-            headerTitleAlign: "left",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="person" color={color} size={size - 2} />
             ),
@@ -168,17 +160,6 @@ export default function TabsLayout() {
             title: "Stats",
             headerShown: true,
             headerLeft: () => <BackButton />,
-            headerStyle: {
-              backgroundColor: Colors.primary,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.text + "08",
-            },
-            headerTitleStyle: {
-              fontSize: 18,
-              fontWeight: "700",
-              color: Colors.white,
-            },
-            headerTitleAlign: "left",
             tabBarBadgeStyle: {
               backgroundColor: Colors.secondary,
               color: Colors.white,
@@ -197,17 +178,6 @@ export default function TabsLayout() {
             title: "Wallet",
             headerShown: true,
             headerLeft: () => <BackButton />,
-            headerStyle: {
-              backgroundColor: Colors.primary,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.text + "08",
-            },
-            headerTitleStyle: {
-              fontSize: 18,
-              fontWeight: "700",
-              color: Colors.white,
-            },
-            headerTitleAlign: "left",
             tabBarBadgeStyle: {
               backgroundColor: Colors.secondary,
               color: Colors.white,
@@ -219,10 +189,6 @@ export default function TabsLayout() {
             ),
           }}
         />
-
-
-
-
       </Tabs>
 
 

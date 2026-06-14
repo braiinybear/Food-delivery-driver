@@ -23,7 +23,6 @@ export interface DeliveryPartnerError {
   statusCode: number;
 }
 
-
 export interface DeliveryPartnerStatusResponse {
   licenseBackUrl: any;
   vehicleRcUrl: any;
@@ -36,7 +35,6 @@ export interface DeliveryPartnerStatusResponse {
   createdAt: string;
 }
 
-
 export type DriverStatus = "ONLINE" | "OFFLINE" | "BUSY";
 
 export interface DeliveryUser {
@@ -44,6 +42,8 @@ export interface DeliveryUser {
   email: string;
   phoneNumber: string | null;
   image: string | null;
+  dob?: string | null;
+  gender?: string | null;
 }
 
 export interface DeliveryProfile {

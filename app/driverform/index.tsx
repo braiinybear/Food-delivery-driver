@@ -1,4 +1,4 @@
-import { Colors } from "@/constants/colors";
+import { useTheme } from "@/context/ThemeContext";
 import { Fonts, FontSize } from "@/constants/typography";
 import { useApplyDeliveryPartner } from "@/hooks/useDeliveryPartnerRequest";
 import { usePartnerStore } from "@/store/userider";
@@ -7,7 +7,7 @@ import { showAlert } from "@/store/useAlertStore";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { authClient } from "@/lib/auth-client";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -28,6 +28,8 @@ const VEHICLE_TYPES = ["Bike", "Scooter"];
 
 // ─── Driver Application Form Screen ────────────────────────────────────────────
 export default function DriverFormScreen() {
+  const { Colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   const { setAppliedForRider } = usePartnerStore();
   const { mutate: applyAsRider, isPending: isLoading } =useApplyDeliveryPartner();
   const insets = useSafeAreaInsets();
@@ -57,6 +59,13 @@ export default function DriverFormScreen() {
 
   const pickImage = async (setImageUrl: (url: string) => void) => {
     try {
+      // Request permissions explicitly to ensure launcher registration on Android
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert("Permission Needed", "Please grant gallery permissions to upload documents.");
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
@@ -135,6 +144,13 @@ export default function DriverFormScreen() {
 
   const pickProfilePicture = async () => {
     try {
+      // Request permissions explicitly to ensure launcher registration on Android
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert("Permission Needed", "Please grant gallery permissions to upload your profile picture.");
+        return;
+      }
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
@@ -299,7 +315,7 @@ export default function DriverFormScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={Colors.background} />
 
       {/* Cloudinary Upload Loading Overlay */}
       {isCloudinaryUploading && (
@@ -716,6 +732,8 @@ function ProgressItem({
   label: string;
   completed: boolean;
 }) {
+  const { Colors, isDark } = useTheme();
+  const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   return (
     <View style={styles.progressItem}>
       <View
@@ -761,6 +779,8 @@ function DocumentUploadCard({
   onPress: () => void;
   isUploaded: boolean;
 }) {
+  const { Colors, isDark } = useTheme();
+  const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
   return (
     <TouchableOpacity
       style={[styles.uploadCard, isUploaded && styles.uploadCardUploaded]}
@@ -795,7 +815,7 @@ function DocumentUploadCard({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.surface,

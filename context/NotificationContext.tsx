@@ -20,6 +20,7 @@ interface NotificationContextType {
   pushToken: string | null;
   notification: Notifications.Notification | null;
   error: Error | null;
+  handleNotificationNavigation?: (data: any) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
@@ -40,8 +41,9 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
-export const NotificationProvider: React.FC<NotificationProviderProps> = ({
+export const NotificationProvider: React.FC<NotificationProviderProps & { isReady?: boolean }> = ({
   children,
+  isReady = true,
 }) => {
   const { data: session } = authClient.useSession();
   const existingPushToken =
@@ -59,11 +61,232 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const addOrderOffer = useSocketStore((state) => state.addOrderOffer);
   const queryClient = useQueryClient();
 
+  const isAuthenticated = !!session;
+
+  // Keep track of readiness and auth status via refs
+  const isReadyRef = useRef(isReady);
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  const pendingNavigationRef = useRef<any>(null);
+  const lastProcessedRef = useRef<{ id?: string; screen?: string; time: number } | null>(null);
+
+  // Update ref whenever authentication state changes
+  useEffect(() => {
+    isAuthenticatedRef.current = isAuthenticated;
+    if (isAuthenticated && pendingNavigationRef.current && isReadyRef.current) {
+      const pendingData = pendingNavigationRef.current;
+      pendingNavigationRef.current = null;
+      console.log("📲 Rider authenticated, routing pending notification:");
+      setTimeout(() => {
+        handleNotificationNavigation(pendingData);
+      }, 800);
+    }
+  }, [isAuthenticated]);
+
+  // Update ref and handle pending routes when readiness changes
+  useEffect(() => {
+    isReadyRef.current = isReady;
+    if (isReady) {
+      // Check for startup notification if we haven't checked yet
+      try {
+        const response = Notifications.getLastNotificationResponse();
+        if (response) {
+          const data = response.notification.request.content.data;
+          console.log("📲 Startup notification found:", data);
+          pendingNavigationRef.current = data;
+        }
+      } catch (e) {
+        console.log("Error checking last notification response on ready:", e);
+      }
+
+      if (pendingNavigationRef.current) {
+        const pendingData = pendingNavigationRef.current;
+        pendingNavigationRef.current = null;
+        console.log("📲 Executing startup/deferred notification navigation:");
+        setTimeout(() => {
+          handleNotificationNavigation(pendingData);
+        }, 800);
+      }
+    }
+  }, [isReady]);
+
+  const validateOfferStillAvailable = async (orderId: string) => {
+    try {
+      const { data: availableOrders } = await apiClient.get(
+        "/delivery/available-orders",
+      );
+      const ordersList = Array.isArray(availableOrders)
+        ? availableOrders
+        : (availableOrders as { data?: Array<{ id?: string }> }).data || [];
+
+      return ordersList.some((order) => order?.id === orderId);
+    } catch (err) {
+      console.log("Failed to validate offer availability:", err);
+      return false;
+    }
+  };
+
+  // Centralized notification router helper
+  const handleNotificationNavigation = async (data: any) => {
+    if (!data) return;
+
+    if (!isReadyRef.current) {
+      console.log("📲 Navigation requested before app was ready. Deferring:", data);
+      pendingNavigationRef.current = data;
+      return;
+    }
+
+    const id = (data.id || data.orderId) as string | undefined;
+    const screen = (data.screen || data.type) as string | undefined;
+    const type = data.type as string | undefined;
+
+    console.log("📲 Routing rider notification:", { screen, id, type, data });
+
+    // Prevent duplicate triggers within 2 seconds
+    const now = Date.now();
+    if (
+      lastProcessedRef.current &&
+      lastProcessedRef.current.id === id &&
+      lastProcessedRef.current.screen === screen &&
+      now - lastProcessedRef.current.time < 2000
+    ) {
+      console.log("📲 Ignoring duplicate notification tap");
+      return;
+    }
+    lastProcessedRef.current = { id, screen, time: now };
+
+    if (!isAuthenticatedRef.current) {
+      console.log("📲 Rider is not authenticated. Redirecting to Login and deferring route.");
+      pendingNavigationRef.current = data;
+      router.replace("/(auth)/login");
+      return;
+    }
+
+    // ── Application status updates ──────────────────────────────────────
+    if (
+      type === "PARTNER_REQUEST_APPROVED" ||
+      type === "PARTNER_REQUEST_REJECTED" ||
+      screen === "PartnerStatus"
+    ) {
+      queryClient.invalidateQueries({
+        queryKey: ["delivery-partner-status"],
+      });
+      setTimeout(() => {
+        router.navigate("/(tabs)");
+      }, 300);
+      return;
+    }
+
+    // ── ORDER_OFFER (New delivery request) ──────────────────────────────
+    if (
+      screen === "DeliveryRequest" ||
+      screen === "new_delivery_request" ||
+      type === "ORDER_OFFER"
+    ) {
+      if (id) {
+        const offerExpiresAtRaw = data.offerExpiresAt;
+        const offerExpiresAt =
+          typeof offerExpiresAtRaw === "number"
+            ? offerExpiresAtRaw
+            : typeof offerExpiresAtRaw === "string"
+              ? Number(offerExpiresAtRaw)
+              : NaN;
+
+        if (Number.isFinite(offerExpiresAt) && offerExpiresAt <= Date.now()) {
+          console.log("📲 Ignoring expired order offer notification:", id);
+          return;
+        }
+
+        try {
+          const isStillAvailable = await validateOfferStillAvailable(id);
+          if (!isStillAvailable) {
+            console.log("📲 Ignoring stale order offer notification:", id);
+            return;
+          }
+
+          addOrderOffer({
+            orderId: id,
+            restaurantName: (data.restaurantName as string) || undefined,
+            distanceKm:
+              typeof data.distanceKm === "number"
+                ? data.distanceKm
+                : typeof data.distanceKm === "string"
+                  ? Number(data.distanceKm)
+                  : undefined,
+            earning:
+              typeof data.earning === "number"
+                ? data.earning
+                : typeof data.earning === "string"
+                  ? Number(data.earning)
+                  : undefined,
+            receivedAt: Date.now(),
+          });
+        } catch (err) {
+          console.log("Failed to process push order offer:", err);
+        }
+      }
+      setTimeout(() => {
+        router.navigate("/(tabs)");
+      }, 300);
+      return;
+    }
+
+    // ── Order Assigned or Chat messages ─────────────────────────────────
+    if (
+      screen === "OrderDetails" ||
+      screen === "order_assigned" ||
+      screen === "Chat" ||
+      screen === "customer_message" ||
+      type === "ORDER_ASSIGNED" ||
+      type === "customer_message"
+    ) {
+      setTimeout(() => {
+        router.navigate("/(tabs)");
+      }, 300);
+      return;
+    }
+
+    // ── Earnings screen ─────────────────────────────────────────────────
+    if (screen === "Earnings" || screen === "earnings" || type === "earnings") {
+      setTimeout(() => {
+        router.navigate("/(tabs)/stats");
+      }, 300);
+      return;
+    }
+
+    // Missing or invalid payload -> go to Home screen
+    router.navigate("/(tabs)");
+  };
+
+  // Standalone mount effect to listen for notification events early, handling terminated state
+  useEffect(() => {
+    // Listen for foreground notifications
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log("📲 Notification received in foreground:", notification);
+        setNotification(notification);
+      });
+
+    // Listen for notification taps when the app is backgrounded/foregrounded
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        const data = response.notification.request.content.data;
+        console.log("📲 Rider tapped notification:", data);
+        handleNotificationNavigation(data);
+      });
+
+    return () => {
+      if (notificationListener.current) {
+        notificationListener.current.remove();
+      }
+      if (responseListener.current) {
+        responseListener.current.remove();
+      }
+    };
+  }, []);
+
+  // Separate effect to handle push token setup & registration sync
   useEffect(() => {
     let isMounted = true;
-    const isAuthenticated = !!session;
-
-    // Do not request or sync push tokens if the user is not logged in!
     if (!isAuthenticated) return;
 
     const setupNotifications = async () => {
@@ -110,112 +333,21 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
       }
     };
 
-    const validateOfferStillAvailable = async (orderId: string) => {
-      const { data: availableOrders } = await apiClient.get(
-        "/delivery/available-orders",
-      );
-      const ordersList = Array.isArray(availableOrders)
-        ? availableOrders
-        : (availableOrders as { data?: Array<{ id?: string }> }).data || [];
-
-      return ordersList.some((order) => order?.id === orderId);
-    };
-
     setupNotifications();
-
-    notificationListener.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        console.log("Notification received app is running:", notification);
-        setNotification(notification);
-      });
-
-    responseListener.current =
-      Notifications.addNotificationResponseReceivedListener(async (response) => {
-        const data = response.notification.request.content.data;
-        const orderId = data?.orderId as string | undefined;
-        const type = data?.type as string | undefined;
-        const offerExpiresAtRaw = data?.offerExpiresAt;
-        const offerExpiresAt =
-          typeof offerExpiresAtRaw === "number"
-            ? offerExpiresAtRaw
-            : typeof offerExpiresAtRaw === "string"
-              ? Number(offerExpiresAtRaw)
-              : NaN;
-
-        console.log("Rider tapped notification:", { type, orderId });
-
-        // ── Application status updates ──────────────────────────────────────
-        if (
-          type === "PARTNER_REQUEST_APPROVED" ||
-          type === "PARTNER_REQUEST_REJECTED"
-        ) {
-          // Force the ApplicationStatusScreen to show fresh data
-          queryClient.invalidateQueries({
-            queryKey: ["delivery-partner-status"],
-          });
-          setTimeout(() => {
-            router.navigate("/(tabs)");
-          }, 300);
-          return;
-        }
-
-        if (type !== "ORDER_OFFER" || !orderId) {
-          return;
-        }
-
-        if (Number.isFinite(offerExpiresAt) && offerExpiresAt <= Date.now()) {
-          console.log("Ignoring expired order offer notification:", orderId);
-          return;
-        }
-
-        try {
-          const isStillAvailable = await validateOfferStillAvailable(orderId);
-
-          if (!isStillAvailable) {
-            console.log("Ignoring stale order offer notification:", orderId);
-            return;
-          }
-
-          addOrderOffer({
-            orderId,
-            restaurantName: (data?.restaurantName as string) || undefined,
-            distanceKm:
-              typeof data?.distanceKm === "number"
-                ? data.distanceKm
-                : typeof data?.distanceKm === "string"
-                  ? Number(data.distanceKm)
-                  : undefined,
-            earning:
-              typeof data?.earning === "number"
-                ? data.earning
-                : typeof data?.earning === "string"
-                  ? Number(data.earning)
-                  : undefined,
-            receivedAt: Date.now(),
-          });
-
-          setTimeout(() => {
-            router.navigate("/(tabs)");
-          }, 300);
-        } catch (err) {
-          console.log("Failed to validate push order offer:", err);
-        }
-      });
 
     return () => {
       isMounted = false;
-      if (notificationListener.current) {
-        notificationListener.current.remove();
-      }
-      if (responseListener.current) {
-        responseListener.current.remove();
-      }
     };
-  }, [existingPushToken, registerPushToken, session, updatePushToken, addOrderOffer]);
+  }, [isAuthenticated, existingPushToken, registerPushToken, updatePushToken]);
 
   return (
     <NotificationContext.Provider
-      value={{ pushToken: expopushToken, notification, error }}
+      value={{
+        pushToken: expopushToken,
+        notification,
+        error,
+        handleNotificationNavigation,
+      }}
     >
       {children}
     </NotificationContext.Provider>

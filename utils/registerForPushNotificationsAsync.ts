@@ -4,8 +4,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 function handleRegistrationError(errorMessage: string) {
-  alert(errorMessage);
-  throw new Error(errorMessage);
+  console.warn(`[PushNotification] Registration error: ${errorMessage}`);
 }
 export async function registerForPushNotificationsAsync() {
   if (Platform.OS === 'android') {

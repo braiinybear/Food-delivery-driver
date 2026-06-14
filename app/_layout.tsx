@@ -1,5 +1,6 @@
-import SplashScreenView from "@/components/SplashScreenView";
-import { Colors } from "@/constants/colors";
+import { LightTheme, DarkTheme } from "@/constants/colors";
+import { ThemeProvider, useTheme } from "@/context/ThemeContext";
+import { StatusBar } from "expo-status-bar";
 // this is the better-auth authentication.
 import { authClient } from "@/lib/auth-client";
 import {
@@ -9,32 +10,25 @@ import {
   Nunito_900Black,
 } from "@expo-google-fonts/nunito";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // this is the expo splash screen.
 import * as ExpoSplashScreen from "expo-splash-screen";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
+import SplashScreenView from "@/components/SplashScreenView";
+import { useUser } from "@/hooks/useUser";
 import * as Notifications from "expo-notifications";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { initSocket } from "@/lib/socket-client";
 import { useSocketStore } from "@/store/useSocketStore";
 import { useSocketOrderOffers } from "@/hooks/useSocketOrders";
 import GlobalCustomAlert from "@/components/GlobalCustomAlert";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 15,
-      retry: 2,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+import { queryClient } from "@/lib/query-client";
 
 function SocketBootstrap() {
   useSocketOrderOffers();
@@ -55,7 +49,19 @@ Notifications.setNotificationHandler({
 ExpoSplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <ThemedRoot />
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
+
+function ThemedRoot() {
+  const { Colors, isDark } = useTheme();
   const { data: session, isPending } = authClient.useSession();
+  const { isLoading: isUserLoading } = useUser({ enabled: !!session });
   const existingPushToken =
     (session?.session as { pushToken?: string } | undefined)?.pushToken;
   console.log("Session in RootLayout:", existingPushToken);
@@ -84,7 +90,7 @@ export default function RootLayout() {
       try {
         const socket = await initSocket();
         console.log(socket.id);
-        
+
         setConnected(true);
         setConnectionError(null);
       } catch (error) {
@@ -113,25 +119,42 @@ export default function RootLayout() {
   // Show nothing until fonts are ready
   if (!appReady) return null;
 
+  const isReady = splashDone && !isPending && !(session && isUserLoading);
+
   return (
-  
-      <QueryClientProvider client={queryClient}>
-          <SocketBootstrap />
-          <NotificationProvider>
-        <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-          {/* Animated in-app splash on first load */}
-          {!splashDone && (
-            <SplashScreenView onFinish={() => setSplashDone(true)} />
-          )}
-
-          {/* Instant solid overlay during auth state transitions — no fade-in so no black flash */}
-          {splashDone && isPending && (
-            <View style={transitionStyles.overlay}>
-              <ActivityIndicator size="small" color={Colors.primary} />
-            </View>
-          )}
-
-          <Stack>
+    <NotificationProvider isReady={isReady}>
+      <SocketBootstrap />
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        {/* BLOCK UI while auth session restores, splash animation is running, or session is being verified */}
+        {(!splashDone || isPending || (session && isUserLoading)) ? (
+          <SplashScreenView onFinish={() => setSplashDone(true)} />
+        ) : (
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: isDark ? Colors.background : Colors.secondary,
+              },
+              headerTintColor: Colors.white,
+              headerTitleAlign: "center",
+              headerTitleStyle: {
+                color: Colors.white,
+                fontFamily: 'Nunito_700Bold',
+                fontSize: 18,
+              },
+              headerLeft: () => (
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={{ paddingLeft: 1, paddingRight: 12, height: 44, justifyContent: 'center' }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="keyboard-backspace" size={28} color={Colors.white} />
+                </TouchableOpacity>
+              ),
+              contentStyle: {
+                backgroundColor: Colors.background,
+              }
+            }}
+          >
             {/* Only accessible when not logged in */}
             <Stack.Protected guard={isLoggedOut}>
               <Stack.Screen
@@ -153,34 +176,32 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
+                name="notifications"
+                options={{
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
                 name="driverform"
-                options={{ headerShown:true,headerTitle:"Driver Form",headerTintColor:"#fff",headerStyle:{backgroundColor:Colors.primary},headerTitleAlign:"center",headerTitleStyle:{color:"#fff"} }}
+                options={{ 
+                    headerTitle: "Driver Form",
+                }} 
               />
               <Stack.Screen
                 name="riderprofile"
                 options={{
-                  headerShown: true,
                   headerTitle: "Profile",
-                  headerTintColor: "#fff",
-                  headerStyle: {
-                    backgroundColor: Colors.primary,
-                  },
-                  headerTitleAlign: "center",
-                  headerTitleStyle: {
-                    color: "#fff",
-                  },
                 }}
               />
             </Stack.Protected>
           </Stack>
-        </View>
-          <GlobalCustomAlert />
-         </NotificationProvider>
-      </QueryClientProvider>
-   
+        )}
+      </View>
+      <GlobalCustomAlert />
+    </NotificationProvider>
   );
 }
-const transitionStyles = StyleSheet.create({
+const createTransitionStyles = (Colors: any) => StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.background,

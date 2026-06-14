@@ -1,13 +1,16 @@
-import { Colors } from "@/constants/colors";
 import { Fonts, FontSize } from "@/constants/typography";
 import { authClient } from "@/lib/auth-client";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import React, { useMemo } from "react";
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTheme } from "@/context/ThemeContext";
 
 // ─── Welcome / Delivery Partner Onboarding Screen ──────────────────────────────
 export function RiderWelcomeScreen() {
+    const { Colors, isDark } = useTheme();
+    const styles = useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
     const { data: session } = authClient.useSession();
     const firstName = session?.user?.name?.split(" ")[0] ?? "Partner";
     const insets = useSafeAreaInsets();
@@ -33,7 +36,7 @@ export function RiderWelcomeScreen() {
             >
                 {/* Feature Cards */}
                 <View style={styles.featureCard}>
-                    <View style={[styles.featureIcon, { backgroundColor: "#E8F5E9" }]}>
+                    <View style={[styles.featureIcon, { backgroundColor: isDark ? "rgba(76, 175, 80, 0.15)" : "#E8F5E9" }]}>
                         <Ionicons name="cash-outline" size={24} color={Colors.success} />
                     </View>
                     <View style={styles.featureText}>
@@ -45,7 +48,7 @@ export function RiderWelcomeScreen() {
                 </View>
 
                 <View style={styles.featureCard}>
-                    <View style={[styles.featureIcon, { backgroundColor: "#FFF3E0" }]}>
+                    <View style={[styles.featureIcon, { backgroundColor: isDark ? "rgba(251, 140, 0, 0.15)" : "#FFF3E0" }]}>
                         <Ionicons name="alarm-outline" size={24} color={Colors.warning} />
                     </View>
                     <View style={styles.featureText}>
@@ -57,8 +60,8 @@ export function RiderWelcomeScreen() {
                 </View>
 
                 <View style={styles.featureCard}>
-                    <View style={[styles.featureIcon, { backgroundColor: "#FCE4EC" }]}>
-                        <Ionicons name="heart-outline" size={24} color="#E91E63" />
+                    <View style={[styles.featureIcon, { backgroundColor: isDark ? "rgba(233, 30, 99, 0.15)" : "#FCE4EC" }]}>
+                        <Ionicons name="heart-outline" size={24} color={isDark ? "#F48FB1" : "#E91E63"} />
                     </View>
                     <View style={styles.featureText}>
                         <Text style={styles.featureTitle}>Support & Insurance</Text>
@@ -69,8 +72,8 @@ export function RiderWelcomeScreen() {
                 </View>
 
                 <View style={styles.featureCard}>
-                    <View style={[styles.featureIcon, { backgroundColor: "#E0F2F1" }]}>
-                        <Ionicons name="trophy-outline" size={24} color="#009688" />
+                    <View style={[styles.featureIcon, { backgroundColor: isDark ? "rgba(0, 150, 136, 0.15)" : "#E0F2F1" }]}>
+                        <Ionicons name="trophy-outline" size={24} color={isDark ? "#80CBC4" : "#009688"} />
                     </View>
                     <View style={styles.featureText}>
                         <Text style={styles.featureTitle}>Track Achievements</Text>
@@ -97,13 +100,13 @@ export function RiderWelcomeScreen() {
     );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.surface,
+        backgroundColor: Colors.background,
     },
     topBg: {
-        backgroundColor: Colors.primary,
+        backgroundColor: isDark ? Colors.surface : Colors.secondary,
         paddingBottom: 60,
         alignItems: "center",
         borderBottomLeftRadius: 36,
@@ -139,7 +142,7 @@ const styles = StyleSheet.create({
     featureCard: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.surface,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
@@ -174,37 +177,6 @@ const styles = StyleSheet.create({
         color: Colors.textSecondary,
         lineHeight: 18,
     },
-    statsStrip: {
-        flexDirection: "row",
-        backgroundColor: Colors.white,
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 24,
-        marginTop: 8,
-        justifyContent: "space-around",
-        alignItems: "center",
-        borderWidth: 1,
-        borderColor: Colors.border,
-    },
-    stat: {
-        alignItems: "center",
-    },
-    statNum: {
-        fontFamily: Fonts.brandBlack,
-        fontSize: FontSize.xl,
-        color: Colors.primary,
-    },
-    statLbl: {
-        fontFamily: Fonts.brand,
-        fontSize: FontSize.xs,
-        color: Colors.muted,
-        marginTop: 2,
-    },
-    statDivider: {
-        width: 1,
-        height: 36,
-        backgroundColor: Colors.border,
-    },
     ctaBtn: {
         backgroundColor: Colors.primary,
         borderRadius: 16,
@@ -219,27 +191,12 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 5 },
         elevation: 5,
         marginBottom: 12,
+        marginTop: 10,
     },
     ctaBtnText: {
         fontFamily: Fonts.brandBold,
         fontSize: FontSize.md,
         color: Colors.white,
-        letterSpacing: 0.5,
-    },
-    secondaryBtn: {
-        backgroundColor: Colors.white,
-        borderRadius: 16,
-        paddingVertical: 15,
-        borderWidth: 2,
-        borderColor: Colors.primary,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 16,
-    },
-    secondaryBtnText: {
-        fontFamily: Fonts.brandBold,
-        fontSize: FontSize.md,
-        color: Colors.primary,
         letterSpacing: 0.5,
     },
     footerNote: {
