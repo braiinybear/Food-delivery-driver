@@ -26,7 +26,7 @@ export default {
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "googleServicesFile": "./google-services.json",
+      "googleServicesFile": process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       "package": "com.braiinyfood.fooddeliverydriver",
       "config": {
         "googleMaps": {
