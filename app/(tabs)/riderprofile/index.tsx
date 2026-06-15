@@ -15,6 +15,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "@/context/ThemeContext";
 import { FontSize, Fonts } from "@/constants/typography";
@@ -33,6 +34,18 @@ export default function RiderProfileScreen() {
   const { data: deliveryProfile, isLoading, refetch } = useDeliveryProfile();
   const queryClient = useQueryClient();
   const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
+
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error("Error refetching profile:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const updateUser = useUpdateUser();
   const [isUploading, setIsUploading] = React.useState(false);
@@ -129,7 +142,18 @@ export default function RiderProfileScreen() {
   return (
     <>
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={isDark ? Colors.background : Colors.secondary} />
-      <ScrollView style={{ flex: 1, backgroundColor: Colors.background }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: Colors.background }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+            tintColor={Colors.primary}
+          />
+        }
+      >
         {/* Profile Picture & Basic Info */}
         <View style={styles.profileHeader}>
           <View style={styles.profileImageContainer}>

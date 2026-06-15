@@ -7,6 +7,7 @@ import {
   Text,
   View,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
@@ -18,7 +19,19 @@ const { width: SCREEN_WIDTH } = Dimensions.get("window");
 export default function StatsScreen() {
   const { Colors, isDark } = useTheme();
   const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
-  const { data: earnings, isLoading } = useDriverEarnings();
+  const { data: earnings, isLoading, refetch } = useDriverEarnings();
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } catch (error) {
+      console.error("Error refetching earnings stats:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   return (
     <View style={styles.container}>
@@ -29,17 +42,35 @@ export default function StatsScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : !earnings ? (
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={[styles.emptyContainer, { flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
+        >
           <Ionicons name="stats-chart-outline" size={48} color={Colors.muted} />
           <Text style={styles.emptyText}>No stats available</Text>
           <Text style={styles.emptySubtext}>
             Deliver a few orders to populate your rider stats.
           </Text>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[Colors.primary]}
+              tintColor={Colors.primary}
+            />
+          }
         >
           {/* ── Hero: Today's Earnings Card ── */}
           <View style={styles.heroEarningsCard}>

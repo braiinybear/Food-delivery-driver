@@ -67,107 +67,107 @@ export function NewOrderOfferModal({
     }
   }, [visible, order?.orderId]);
 
-  if (!order) return null;
-
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.timerChip}>
-              <Ionicons name="timer-outline" size={16} color="#FF6B35" />
-              <Text style={styles.timerText}>{timeLeft}s</Text>
+    <Modal visible={visible && !!order} transparent animationType="slide">
+      {order ? (
+        <View style={styles.overlay}>
+          <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.timerChip}>
+                <Ionicons name="timer-outline" size={16} color="#FF6B35" />
+                <Text style={styles.timerText}>{timeLeft}s</Text>
+              </View>
+              
+              <View style={styles.headerTitleContainer}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.typeLabel}>New Delivery Request</Text>
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>NEW!</Text>
+                  </View>
+                </View>
+                {totalOffers > 1 && (
+                  <View style={styles.queueBadge}>
+                    <Text style={styles.queueLabel}>{totalOffers} offers waiting</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity 
+                style={styles.closeBtn} 
+                onPress={onDismiss}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close-circle" size={32} color={isDark ? Colors.muted : "#D1D5DB"} />
+              </TouchableOpacity>
             </View>
-            
-            <View style={styles.headerTitleContainer}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={styles.typeLabel}>New Delivery Request</Text>
-                <View style={styles.newBadge}>
-                  <Text style={styles.newBadgeText}>NEW!</Text>
+
+            {/* Progress Bar */}
+            <View style={styles.progressBarBg}>
+              <Animated.View
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  },
+                ]}
+              />
+            </View>
+
+            {/* Order Details */}
+            <View style={styles.content}>
+              <View style={styles.earningBox}>
+                <Text style={styles.earningLabel}>Estimated Earning</Text>
+                <Text style={styles.earningValue}>₹{(order.earning || 45).toFixed(2)}</Text>
+              </View>
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="restaurant" size={24} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoTitle}>{order.restaurantName || "Nearby Restaurant"}</Text>
+                  <Text style={styles.infoSub}>{order.distanceKm ? `${order.distanceKm} km away` : "Calculating distance..."}</Text>
                 </View>
               </View>
-              {totalOffers > 1 && (
-                <View style={styles.queueBadge}>
-                  <Text style={styles.queueLabel}>{totalOffers} offers waiting</Text>
+
+              <View style={styles.divider} />
+
+              <View style={styles.perksRow}>
+                <View style={styles.perk}>
+                  <Ionicons name="flash" size={16} color="#FFD700" />
+                  <Text style={styles.perkText}>Instant Payout</Text>
                 </View>
-              )}
-            </View>
-
-            <TouchableOpacity 
-              style={styles.closeBtn} 
-              onPress={onDismiss}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons name="close-circle" size={32} color={isDark ? Colors.muted : "#D1D5DB"} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Progress Bar */}
-          <View style={styles.progressBarBg}>
-            <Animated.View
-              style={[
-                styles.progressBarFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
-          </View>
-
-          {/* Order Details */}
-          <View style={styles.content}>
-            <View style={styles.earningBox}>
-              <Text style={styles.earningLabel}>Estimated Earning</Text>
-              <Text style={styles.earningValue}>₹{(order.earning || 45).toFixed(2)}</Text>
-            </View>
-
-            <View style={styles.infoRow}>
-              <View style={styles.infoIcon}>
-                <Ionicons name="restaurant" size={24} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoTitle}>{order.restaurantName || "Nearby Restaurant"}</Text>
-                <Text style={styles.infoSub}>{order.distanceKm ? `${order.distanceKm} km away` : "Calculating distance..."}</Text>
+                <View style={styles.perk}>
+                  <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
+                  <Text style={styles.perkText}>Safe Trip</Text>
+                </View>
               </View>
             </View>
 
-            <View style={styles.divider} />
-
-            <View style={styles.perksRow}>
-              <View style={styles.perk}>
-                <Ionicons name="flash" size={16} color="#FFD700" />
-                <Text style={styles.perkText}>Instant Payout</Text>
-              </View>
-              <View style={styles.perk}>
-                <Ionicons name="shield-checkmark" size={16} color={Colors.success} />
-                <Text style={styles.perkText}>Safe Trip</Text>
-              </View>
+            {/* Actions */}
+            <View style={styles.footer}>
+              <TouchableOpacity 
+                style={styles.rejectBtn}
+                onPress={() => onReject(order.orderId)}
+              >
+                <Text style={styles.rejectBtnText}>Decline</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.acceptBtn}
+                onPress={() => onAccept(order.orderId)}
+              >
+                <Text style={styles.acceptBtnText}>Accept</Text>
+                <Ionicons name="arrow-forward" size={20} color={isDark ? Colors.background : "#FFF"} />
+              </TouchableOpacity>
             </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.rejectBtn}
-              onPress={() => onReject(order.orderId)}
-            >
-              <Text style={styles.rejectBtnText}>Decline</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.acceptBtn}
-              onPress={() => onAccept(order.orderId)}
-            >
-              <Text style={styles.acceptBtnText}>Accept</Text>
-              <Ionicons name="arrow-forward" size={20} color={isDark ? Colors.background : "#FFF"} />
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      ) : null}
     </Modal>
   );
 }

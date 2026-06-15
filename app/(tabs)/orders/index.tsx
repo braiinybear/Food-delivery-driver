@@ -173,7 +173,17 @@ export default function DriverOrdersScreen() {
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       ) : isEmpty ? (
-        <View style={styles.emptyContainer}>
+        <ScrollView
+          contentContainerStyle={[styles.emptyContainer, { flexGrow: 1 }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={Colors.primary}
+              colors={[Colors.primary]}
+            />
+          }
+        >
           <View style={styles.emptyIconBg}>
             <Ionicons name="radio-outline" size={42} color={Colors.primary} />
           </View>
@@ -181,7 +191,7 @@ export default function DriverOrdersScreen() {
           <Text style={styles.emptySubtext}>
             Go online and stay active to receive the best delivery offers in real-time.
           </Text>
-        </View>
+        </ScrollView>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}

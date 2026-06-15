@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Pressable } from "react-native";
+import { View, Text, StyleSheet, Dimensions, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Pressable, RefreshControl } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import { useTheme } from "@/context/ThemeContext";
 import { FontSize, Fonts } from "@/constants/typography";
@@ -30,7 +30,7 @@ function txLabel(type: string): string {
 export default function WalletScreen() {
   const { Colors, isDark } = useTheme();
   const styles = React.useMemo(() => createStyles(Colors, isDark), [Colors, isDark]);
-  const { data: earnings, isLoading: earningsLoading } = useDriverEarnings();
+  const { data: earnings, isLoading: earningsLoading, refetch: refetchEarnings } = useDriverEarnings();
 
   const [isWithdrawModalVisible, setIsWithdrawModalVisible] = React.useState(false);
   const [modalTab, setModalTab] = React.useState<"request" | "history">("request");
@@ -42,16 +42,33 @@ export default function WalletScreen() {
   const [ifscCode, setIfscCode] = React.useState("");
 
   // History query and mutate
-  const { data: withdrawalsData, isLoading: historyLoading } = useWithdrawalRequests(1, 20);
+  const { data: withdrawalsData, isLoading: historyLoading, refetch: refetchWithdrawals } = useWithdrawalRequests(1, 20);
   const { 
     data: txPagedData, 
     isLoading: txLoading,
     fetchNextPage: txFetchNextPage,
     hasNextPage: txHasNextPage,
-    isFetchingNextPage: txFetchingMore
+    isFetchingNextPage: txFetchingMore,
+    refetch: refetchTransactions
   } = useWalletTransactions(10);
   const transactionsList = React.useMemo(() => txPagedData?.pages.flatMap((p) => p.data) ?? [], [txPagedData]);
   const requestWithdrawal = useRequestWithdrawal();
+
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchEarnings(),
+        refetchWithdrawals(),
+        refetchTransactions(),
+      ]);
+    } catch (error) {
+      console.error("Error refreshing wallet data:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchEarnings, refetchWithdrawals, refetchTransactions]);
 
   const handleSubmitWithdrawal = () => {
     const amt = parseFloat(amount);
@@ -239,15 +256,34 @@ export default function WalletScreen() {
             <ActivityIndicator size="small" color={Colors.primary} />
           </View>
         ) : transactionsList.length === 0 ? (
-          <View style={[styles.statCard, { paddingVertical: 30, alignItems: "center", width: "100%", flex: 1 }]}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.statCard, { paddingVertical: 30, alignItems: "center", width: "100%", flexGrow: 1, justifyContent: "center" }]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[Colors.primary]}
+                tintColor={Colors.primary}
+              />
+            }
+          >
             <Ionicons name="swap-horizontal-outline" size={32} color={Colors.muted} />
             <Text style={{ fontFamily: Fonts.brand, fontSize: FontSize.sm, color: Colors.muted, marginTop: 8 }}>No transaction history found.</Text>
-          </View>
+          </ScrollView>
         ) : (
           <View style={[styles.statCard, { alignItems: "stretch", paddingVertical: 0, paddingHorizontal: 0, width: "100%", overflow: 'hidden', flex: 1 }]}>
             <ScrollView 
               contentContainerStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
               showsVerticalScrollIndicator={true}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  colors={[Colors.primary]}
+                  tintColor={Colors.primary}
+                />
+              }
             >
               {transactionsList.map((item, index) => {
                 const isLast = index === transactionsList.length - 1;

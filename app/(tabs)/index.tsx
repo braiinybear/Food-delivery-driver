@@ -536,7 +536,6 @@ function DriverHomeContent() {
 
       {/* NEW ORDER MODAL */}
       <NewOrderOfferModal
-        key={currentOffer?.orderId}
         visible={pendingOffers.length > 0 && !hasActiveDelivery}
         order={currentOffer}
         onAccept={handleAcceptOffer}

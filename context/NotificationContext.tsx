@@ -109,21 +109,6 @@ export const NotificationProvider: React.FC<NotificationProviderProps & { isRead
     }
   }, [isReady]);
 
-  const validateOfferStillAvailable = async (orderId: string) => {
-    try {
-      const { data: availableOrders } = await apiClient.get(
-        "/delivery/available-orders",
-      );
-      const ordersList = Array.isArray(availableOrders)
-        ? availableOrders
-        : (availableOrders as { data?: Array<{ id?: string }> }).data || [];
-
-      return ordersList.some((order) => order?.id === orderId);
-    } catch (err) {
-      console.log("Failed to validate offer availability:", err);
-      return false;
-    }
-  };
 
   // Centralized notification router helper
   const handleNotificationNavigation = async (data: any) => {
@@ -196,37 +181,34 @@ export const NotificationProvider: React.FC<NotificationProviderProps & { isRead
           return;
         }
 
-        try {
-          const isStillAvailable = await validateOfferStillAvailable(id);
-          if (!isStillAvailable) {
-            console.log("📲 Ignoring stale order offer notification:", id);
-            return;
-          }
-
-          addOrderOffer({
-            orderId: id,
-            restaurantName: (data.restaurantName as string) || undefined,
-            distanceKm:
-              typeof data.distanceKm === "number"
-                ? data.distanceKm
-                : typeof data.distanceKm === "string"
-                  ? Number(data.distanceKm)
-                  : undefined,
-            earning:
-              typeof data.earning === "number"
-                ? data.earning
-                : typeof data.earning === "string"
-                  ? Number(data.earning)
-                  : undefined,
-            receivedAt: Date.now(),
-          });
-        } catch (err) {
-          console.log("Failed to process push order offer:", err);
+        // Calculate dynamic countdown timer based on expiry time, default to 45
+        let calculatedExpiresIn = 45;
+        if (Number.isFinite(offerExpiresAt)) {
+          calculatedExpiresIn = Math.max(1, Math.round((offerExpiresAt - Date.now()) / 1000));
         }
+
+        addOrderOffer({
+          orderId: id,
+          restaurantName: (data.restaurantName as string) || undefined,
+          distanceKm:
+            typeof data.distanceKm === "number"
+              ? data.distanceKm
+              : typeof data.distanceKm === "string"
+                ? Number(data.distanceKm)
+                : undefined,
+          earning:
+            typeof data.earning === "number"
+              ? data.earning
+              : typeof data.earning === "string"
+                ? Number(data.earning)
+                : undefined,
+          expiresInSeconds: calculatedExpiresIn,
+          receivedAt: Date.now(),
+        });
       }
       setTimeout(() => {
         router.navigate("/(tabs)");
-      }, 300);
+      }, 50);
       return;
     }
 
