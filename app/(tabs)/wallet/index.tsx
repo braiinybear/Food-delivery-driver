@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { View, Text, StyleSheet, Dimensions, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Pressable, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, Dimensions, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, Pressable, RefreshControl, KeyboardAvoidingView, Platform } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import { useTheme } from "@/context/ThemeContext";
 import { FontSize, Fonts } from "@/constants/typography";
@@ -338,74 +338,76 @@ export default function WalletScreen() {
         )}
       </View>
 
-      {/* ── Top Up Modal ── */}
+      {/* ── Top-Up Modal ── */}
       <Modal
         visible={isTopUpModalVisible}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setIsTopUpModalVisible(false)}
       >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setIsTopUpModalVisible(false)}
-        >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Top Up Wallet</Text>
-              <TouchableOpacity onPress={() => setIsTopUpModalVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setIsTopUpModalVisible(false)} />
+          <KeyboardAvoidingView behavior="padding" style={styles.sheetWrapper}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Top Up Wallet</Text>
+                <TouchableOpacity onPress={() => setIsTopUpModalVisible(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
+                </TouchableOpacity>
+              </View>
 
-            {topUpStep === "idle" ? (
-              <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
-                <View style={[styles.statCard, { padding: 16, marginBottom: 16, width: '100%', alignItems: 'center' }]}>
-                  <Text style={{ fontSize: 13, color: Colors.muted, fontFamily: Fonts.brand }}>Current Balance</Text>
-                  <Text style={{ fontSize: 24, fontFamily: Fonts.brandBlack, color: (earnings.walletBalance || 0) < 0 ? '#EF4444' : Colors.text, marginTop: 4 }}>
-                    ₹{(earnings.walletBalance || 0).toFixed(2)}
+              {topUpStep === "idle" ? (
+                <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View style={[styles.statCard, { padding: 16, marginBottom: 16, width: '100%', alignItems: 'center' }]}>
+                    <Text style={{ fontSize: 13, color: Colors.muted, fontFamily: Fonts.brand }}>Current Balance</Text>
+                    <Text style={{ fontSize: 24, fontFamily: Fonts.brandBlack, color: (earnings.walletBalance || 0) < 0 ? '#EF4444' : Colors.text, marginTop: 4 }}>
+                      ₹{(earnings.walletBalance || 0).toFixed(2)}
+                    </Text>
+                  </View>
+
+                  {/* Amount Input */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Amount to Deposit (₹)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. 500"
+                      placeholderTextColor={Colors.muted}
+                      keyboardType="numeric"
+                      value={topUpAmount}
+                      onChangeText={setTopUpAmount}
+                    />
+                  </View>
+
+                  {/* Submit Button */}
+                  <TouchableOpacity
+                    style={[styles.submitButton, { marginTop: 16 }]}
+                    onPress={handleTopUp}
+                  >
+                    <Text style={styles.submitButtonText}>Pay with Razorpay</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              ) : (
+                <View style={styles.statusContainer}>
+                  {topUpStep === "creating" && <ActivityIndicator size="large" color={Colors.primary} />}
+                  {topUpStep === "awaiting" && <ActivityIndicator size="large" color={Colors.primary} />}
+                  {topUpStep === "verifying" && <ActivityIndicator size="large" color={Colors.primary} />}
+                  {topUpStep === "success" && <Ionicons name="checkmark-circle" size={56} color="#22C55E" />}
+                  {topUpStep === "failed" && <Ionicons name="close-circle" size={56} color="#EF4444" />}
+                  
+                  <Text style={styles.statusTextState}>
+                    {topUpStep === "creating" && "Creating payment order..."}
+                    {topUpStep === "awaiting" && "Opening payment gateway..."}
+                    {topUpStep === "verifying" && "Verifying payment..."}
+                    {topUpStep === "success" && "Top up successful!"}
+                    {topUpStep === "failed" && (topUpError ?? "Payment failed.")}
                   </Text>
                 </View>
-
-                {/* Amount Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Amount to Deposit (₹)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="e.g. 500"
-                    placeholderTextColor={Colors.muted}
-                    keyboardType="numeric"
-                    value={topUpAmount}
-                    onChangeText={setTopUpAmount}
-                  />
-                </View>
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  style={[styles.submitButton, { marginTop: 16 }]}
-                  onPress={handleTopUp}
-                >
-                  <Text style={styles.submitButtonText}>Pay with Razorpay</Text>
-                </TouchableOpacity>
-              </ScrollView>
-            ) : (
-              <View style={styles.statusContainer}>
-                {topUpStep === "creating" && <ActivityIndicator size="large" color={Colors.primary} />}
-                {topUpStep === "awaiting" && <ActivityIndicator size="large" color={Colors.primary} />}
-                {topUpStep === "verifying" && <ActivityIndicator size="large" color={Colors.primary} />}
-                {topUpStep === "success" && <Ionicons name="checkmark-circle" size={56} color="#22C55E" />}
-                {topUpStep === "failed" && <Ionicons name="close-circle" size={56} color="#EF4444" />}
-                
-                <Text style={styles.statusTextState}>
-                  {topUpStep === "creating" && "Creating payment order..."}
-                  {topUpStep === "awaiting" && "Opening payment gateway..."}
-                  {topUpStep === "verifying" && "Verifying payment..."}
-                  {topUpStep === "success" && "Top up successful!"}
-                  {topUpStep === "failed" && (topUpError ?? "Payment failed.")}
-                </Text>
-              </View>
-            )}
-          </Pressable>
-        </Pressable>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* ── Withdrawal Modal ── */}
@@ -413,192 +415,196 @@ export default function WalletScreen() {
         visible={isWithdrawModalVisible}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent
         onRequestClose={() => setIsWithdrawModalVisible(false)}
       >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setIsWithdrawModalVisible(false)}
-        >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Payouts & Withdrawals</Text>
-              <TouchableOpacity onPress={() => setIsWithdrawModalVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={Colors.text} />
-              </TouchableOpacity>
-            </View>
-
-            {/* Segmented Control / Tabs */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tabButton, modalTab === "request" && styles.activeTabButton]}
-                onPress={() => setModalTab("request")}
-              >
-                <Text style={[styles.tabText, modalTab === "request" && styles.activeTabText]}>Request Payout</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabButton, modalTab === "history" && styles.activeTabButton]}
-                onPress={() => setModalTab("history")}
-              >
-                <Text style={[styles.tabText, modalTab === "history" && styles.activeTabText]}>History</Text>
-              </TouchableOpacity>
-            </View>
-
-            {modalTab === "request" ? (
-              <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
-                <View style={styles.balanceInfoBox}>
-                  <Text style={styles.balanceInfoLabel}>Available Balance</Text>
-                  <Text style={styles.balanceInfoValue}>₹{(earnings.walletBalance || 0).toFixed(2)}</Text>
-                </View>
-
-                {/* Amount Input */}
-                <View style={styles.inputGroup}>
-                  <View style={styles.inputHeaderRow}>
-                    <Text style={styles.inputLabel}>Withdrawal Amount (₹)</Text>
-                    <TouchableOpacity onPress={() => setAmount(Math.floor(earnings.walletBalance).toString())}>
-                      <Text style={styles.quickActionText}>Withdraw All</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Min. ₹100"
-                    placeholderTextColor={Colors.muted}
-                    keyboardType="numeric"
-                    value={amount}
-                    onChangeText={setAmount}
-                  />
-                </View>
-
-                {/* Account Name */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Bank Account Holder Name</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter Account Holder Name"
-                    placeholderTextColor={Colors.muted}
-                    value={bankAccountName}
-                    onChangeText={setBankAccountName}
-                  />
-                </View>
-
-                {/* Account Number */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Bank Account Number</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter Bank Account Number"
-                    placeholderTextColor={Colors.muted}
-                    keyboardType="numeric"
-                    value={bankAccountNumber}
-                    onChangeText={setBankAccountNumber}
-                  />
-                </View>
-
-                {/* IFSC Code */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>IFSC Code</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="e.g. HDFC0001234"
-                    placeholderTextColor={Colors.muted}
-                    autoCapitalize="characters"
-                    value={ifscCode}
-                    onChangeText={setIfscCode}
-                  />
-                </View>
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={handleSubmitWithdrawal}
-                  disabled={requestWithdrawal.isPending}
-                >
-                  {requestWithdrawal.isPending ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <Text style={styles.submitButtonText}>Submit Request</Text>
-                  )}
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setIsWithdrawModalVisible(false)} />
+          <KeyboardAvoidingView behavior="padding" style={styles.sheetWrapper}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHandle} />
+              {/* Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Payouts & Withdrawals</Text>
+                <TouchableOpacity onPress={() => setIsWithdrawModalVisible(false)} style={styles.closeButton}>
+                  <Ionicons name="close" size={24} color={Colors.text} />
                 </TouchableOpacity>
+              </View>
 
-                <Text style={styles.disclaimerText}>
-                  * Payouts are processed within 24-48 business hours. Please verify your banking details before submitting.
-                </Text>
-              </ScrollView>
-            ) : (
-              <View style={{ flex: 1 }}>
-                {historyLoading ? (
-                  <View style={styles.centeredLoading}>
-                    <ActivityIndicator size="small" color={Colors.primary} />
+              {/* Segmented Control / Tabs */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tabButton, modalTab === "request" && styles.activeTabButton]}
+                  onPress={() => setModalTab("request")}
+                >
+                  <Text style={[styles.tabText, modalTab === "request" && styles.activeTabText]}>Request Payout</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabButton, modalTab === "history" && styles.activeTabButton]}
+                  onPress={() => setModalTab("history")}
+                >
+                  <Text style={[styles.tabText, modalTab === "history" && styles.activeTabText]}>History</Text>
+                </TouchableOpacity>
+              </View>
+
+              {modalTab === "request" ? (
+                <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                  <View style={styles.balanceInfoBox}>
+                    <Text style={styles.balanceInfoLabel}>Available Balance</Text>
+                    <Text style={styles.balanceInfoValue}>₹{(earnings.walletBalance || 0).toFixed(2)}</Text>
                   </View>
-                ) : !withdrawalsData?.data || withdrawalsData.data.length === 0 ? (
-                  <View style={styles.emptyHistoryContainer}>
-                    <Ionicons name="receipt-outline" size={48} color={Colors.muted} />
-                    <Text style={styles.emptyHistoryText}>No withdrawal history found.</Text>
+
+                  {/* Amount Input */}
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputHeaderRow}>
+                      <Text style={styles.inputLabel}>Withdrawal Amount (₹)</Text>
+                      <TouchableOpacity onPress={() => setAmount(Math.floor(earnings.walletBalance).toString())}>
+                        <Text style={styles.quickActionText}>Withdraw All</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Min. ₹100"
+                      placeholderTextColor={Colors.muted}
+                      keyboardType="numeric"
+                      value={amount}
+                      onChangeText={setAmount}
+                    />
                   </View>
-                ) : (
-                  <ScrollView contentContainerStyle={styles.historyList}>
-                    {withdrawalsData.data.map((item) => (
-                      <View key={item.id} style={styles.historyCard}>
-                        <View style={styles.historyCardHeader}>
-                          <View>
-                            <Text style={styles.historyAmountText}>₹{item.amount.toFixed(0)}</Text>
-                            <Text style={styles.historyDateText}>
-                              {new Date(item.createdAt).toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </Text>
-                          </View>
-                          <View style={[
-                            styles.statusBadge,
-                            item.status === 'APPROVED' && styles.statusApproved,
-                            item.status === 'REJECTED' && styles.statusRejected,
-                            item.status === 'HELD' && styles.statusHeld,
-                            item.status === 'PENDING' && styles.statusPending,
-                          ]}>
-                            <Text style={[
-                              styles.statusBadgeText,
-                              item.status === 'APPROVED' && styles.statusApprovedText,
-                              item.status === 'REJECTED' && styles.statusRejectedText,
-                              item.status === 'HELD' && styles.statusHeldText,
-                              item.status === 'PENDING' && styles.statusPendingText,
-                            ]}>
-                              {item.status}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={styles.historyCardDivider} />
-                        <View style={styles.historyCardBody}>
-                          <View style={styles.historyDetailRow}>
-                            <Text style={styles.historyDetailLabel}>Bank:</Text>
-                            <Text style={styles.historyDetailValue} numberOfLines={1}>
-                              {item.bankAccountName} ({item.bankAccountNumber.slice(-4).padStart(item.bankAccountNumber.length, '*')})
-                            </Text>
-                          </View>
-                          <View style={styles.historyDetailRow}>
-                            <Text style={styles.historyDetailLabel}>IFSC:</Text>
-                            <Text style={styles.historyDetailValue}>{item.ifscCode}</Text>
-                          </View>
-                          {item.rejectionReason && (
-                            <View style={[styles.historyDetailRow, { marginTop: 4 }]}>
-                              <Text style={[styles.historyDetailLabel, { color: '#EF4444' }]}>Reason:</Text>
-                              <Text style={[styles.historyDetailValue, { color: '#EF4444' }]} numberOfLines={2}>
-                                {item.rejectionReason}
+
+                  {/* Account Name */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Bank Account Holder Name</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter Account Holder Name"
+                      placeholderTextColor={Colors.muted}
+                      value={bankAccountName}
+                      onChangeText={setBankAccountName}
+                    />
+                  </View>
+
+                  {/* Account Number */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Bank Account Number</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="Enter Bank Account Number"
+                      placeholderTextColor={Colors.muted}
+                      keyboardType="numeric"
+                      value={bankAccountNumber}
+                      onChangeText={setBankAccountNumber}
+                    />
+                  </View>
+
+                  {/* IFSC Code */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>IFSC Code</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      placeholder="e.g. HDFC0001234"
+                      placeholderTextColor={Colors.muted}
+                      autoCapitalize="characters"
+                      value={ifscCode}
+                      onChangeText={setIfscCode}
+                    />
+                  </View>
+
+                  {/* Submit Button */}
+                  <TouchableOpacity
+                    style={styles.submitButton}
+                    onPress={handleSubmitWithdrawal}
+                    disabled={requestWithdrawal.isPending}
+                  >
+                    {requestWithdrawal.isPending ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={styles.submitButtonText}>Submit Request</Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <Text style={styles.disclaimerText}>
+                    * Payouts are processed within 24-48 business hours. Please verify your banking details before submitting.
+                  </Text>
+                </ScrollView>
+              ) : (
+                <View style={{ flex: 1 }}>
+                  {historyLoading ? (
+                    <View style={styles.centeredLoading}>
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    </View>
+                  ) : !withdrawalsData?.data || withdrawalsData.data.length === 0 ? (
+                    <View style={styles.emptyHistoryContainer}>
+                      <Ionicons name="receipt-outline" size={48} color={Colors.muted} />
+                      <Text style={styles.emptyHistoryText}>No withdrawal history found.</Text>
+                    </View>
+                  ) : (
+                    <ScrollView contentContainerStyle={styles.historyList} showsVerticalScrollIndicator={false}>
+                      {withdrawalsData.data.map((item) => (
+                        <View key={item.id} style={styles.historyCard}>
+                          <View style={styles.historyCardHeader}>
+                            <View>
+                              <Text style={styles.historyAmountText}>₹{item.amount.toFixed(0)}</Text>
+                              <Text style={styles.historyDateText}>
+                                {new Date(item.createdAt).toLocaleDateString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
                               </Text>
                             </View>
-                          )}
+                            <View style={[
+                              styles.statusBadge,
+                              item.status === 'APPROVED' && styles.statusApproved,
+                              item.status === 'REJECTED' && styles.statusRejected,
+                              item.status === 'HELD' && styles.statusHeld,
+                              item.status === 'PENDING' && styles.statusPending,
+                            ]}>
+                              <Text style={[
+                                styles.statusBadgeText,
+                                item.status === 'APPROVED' && styles.statusApprovedText,
+                                item.status === 'REJECTED' && styles.statusRejectedText,
+                                item.status === 'HELD' && styles.statusHeldText,
+                                item.status === 'PENDING' && styles.statusPendingText,
+                              ]}>
+                                {item.status}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.historyCardDivider} />
+
+                          <View style={styles.historyCardBody}>
+                            <View style={styles.historyDetailRow}>
+                              <Text style={styles.historyDetailLabel}>Account Holder</Text>
+                              <Text style={styles.historyDetailValue}>{item.bankAccountName || 'N/A'}</Text>
+                            </View>
+                            <View style={styles.historyDetailRow}>
+                              <Text style={styles.historyDetailLabel}>Account No.</Text>
+                              <Text style={styles.historyDetailValue}>{item.bankAccountNumber ? `••••${item.bankAccountNumber.slice(-4)}` : 'N/A'}</Text>
+                            </View>
+                            <View style={styles.historyDetailRow}>
+                              <Text style={styles.historyDetailLabel}>IFSC Code</Text>
+                              <Text style={styles.historyDetailValue}>{item.ifscCode || 'N/A'}</Text>
+                            </View>
+                            {item.rejectionReason && (
+                              <View style={[styles.historyDetailRow, { marginTop: 4 }]}>
+                                <Text style={styles.historyDetailLabel}>Rejection Reason</Text>
+                                <Text style={[styles.historyDetailValue, { color: Colors.danger }]}>{item.rejectionReason}</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
-                      </View>
-                    ))}
-                  </ScrollView>
-                )}
-              </View>
-            )}
-          </Pressable>
-        </Pressable>
+                      ))}
+                    </ScrollView>
+                  )}
+                </View>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
     </View>
   );
@@ -806,12 +812,25 @@ const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalContent: {
+  sheetWrapper: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    height: '85%',
-    paddingTop: 16,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+    height: '75%',
+  },
+  modalCard: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  modalHandle: {
+    width: 38,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
   },
   modalHeader: {
     flexDirection: 'row',

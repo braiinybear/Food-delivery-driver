@@ -312,7 +312,7 @@ function LiveOfferCard({
       <View style={styles.liveOfferHeader}>
         <View>
           <Text style={styles.liveOfferEyebrow}>Live Socket Offer #{offer.orderId.slice(-6).toUpperCase()}</Text>
-          <Text style={styles.cardTitle}>{offer.restaurantName || 'Restaurant'}</Text>
+          <Text style={styles.cardTitle}>{(offer as any).storeName || (offer as any).store?.name || offer.restaurantName || 'Merchant'}</Text>
         </View>
         <View style={styles.liveOfferCountdown}>
           <Ionicons name="timer-outline" size={14} color="#B45309" />
@@ -386,7 +386,7 @@ function FallbackOrderCard({
       >
         <View style={styles.fallbackHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{order.restaurantName || 'Restaurant'} (#{order.id.slice(-6).toUpperCase()})</Text>
+            <Text style={styles.cardTitle}>{(order as any).storeName || (order as any).store?.name || order.restaurantName || 'Merchant'} (#{order.id.slice(-6).toUpperCase()})</Text>
             <Text style={styles.cardSubtitle}>
               {order.itemCount} item{order.itemCount !== 1 ? 's' : ''} for {order.customerName}
             </Text>
@@ -582,7 +582,10 @@ function OrderDetailModal({
               </View>
             </View>
 
-            <InfoBlock label="Restaurant" value={order.restaurantName} />
+            <InfoBlock
+              label={(order as any).type === 'GROCERY' || (order as any).store ? "Store / Warehouse" : "Restaurant"}
+              value={(order as any).storeName || (order as any).store?.name || order.restaurantName || 'Merchant'}
+            />
             <InfoBlock label="Customer" value={order.customerName} />
             <InfoBlock
               label="Items"

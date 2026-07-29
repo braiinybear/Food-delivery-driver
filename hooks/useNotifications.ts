@@ -48,8 +48,35 @@ export const useMarkNotificationAsRead = () => {
       const { data } = await apiClient.patch(`/api/notifications/${id}/read`);
       return data;
     },
-    onSuccess: () => {
-      // Invalidate queries to refresh notifications list & unread counts
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      queryClient.setQueriesData({ queryKey: ["notifications"] }, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+
+        let wasUnread = false;
+        const newPages = oldData.pages.map((page: PaginatedNotificationsResponse) => {
+          const updatedList = page.data.map((n) => {
+            if (n.id === id && !n.isRead) {
+              wasUnread = true;
+              return { ...n, isRead: true };
+            }
+            return n;
+          });
+          return { ...page, data: updatedList };
+        });
+
+        if (wasUnread) {
+          newPages[0] = {
+            ...newPages[0],
+            unreadCount: Math.max(0, (newPages[0].unreadCount || 1) - 1),
+          };
+        }
+
+        return { ...oldData, pages: newPages };
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
@@ -63,8 +90,22 @@ export const useMarkAllNotificationsAsRead = () => {
       const { data } = await apiClient.patch("/api/notifications/read-all");
       return data;
     },
-    onSuccess: () => {
-      // Invalidate queries to refresh notifications list & unread counts
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["notifications"] });
+
+      queryClient.setQueriesData({ queryKey: ["notifications"] }, (oldData: any) => {
+        if (!oldData || !oldData.pages) return oldData;
+
+        const newPages = oldData.pages.map((page: PaginatedNotificationsResponse) => ({
+          ...page,
+          unreadCount: 0,
+          data: page.data.map((n) => ({ ...n, isRead: true })),
+        }));
+
+        return { ...oldData, pages: newPages };
+      });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });

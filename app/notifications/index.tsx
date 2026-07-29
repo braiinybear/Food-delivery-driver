@@ -136,6 +136,26 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerTitle: "Notifications",
+          headerRight: () =>
+            unreadCount > 0 ? (
+              <TouchableOpacity
+                onPress={handleMarkAllAsRead}
+                disabled={isMarkingAllPending}
+                style={styles.readAllButton}
+                activeOpacity={0.7}
+              >
+                {isMarkingAllPending ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.readAllText}>Mark all as read</Text>
+                )}
+              </TouchableOpacity>
+            ) : null,
+        }}
+      />
      
       <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={Colors.background} />
 

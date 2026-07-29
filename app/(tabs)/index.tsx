@@ -17,6 +17,7 @@ import {
   View,
   Dimensions,
   Platform,
+  Keyboard,
 } from "react-native";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import Constants from "expo-constants";
@@ -47,6 +48,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // ─── Bottom sheet snap points (as distance from TOP) ───
 const SNAP_TOP = SCREEN_HEIGHT * 0.25;   // Sheet takes 75% of screen
 const SNAP_BOTTOM = SCREEN_HEIGHT * 0.52; // Sheet takes ~48% of screen (starts higher)
+const SNAP_KEYBOARD = SCREEN_HEIGHT * 0.06; // Sheet pulls up to top 6% when typing OTP
 
 // ─── Decode Google's encoded polyline into lat/lng array ───
 function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
@@ -120,6 +122,7 @@ function DriverHomeContent() {
   const queryClient = useQueryClient();
   const [otp, setOtp] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const mapRef = useRef<MapView>(null);
   const [driverLocation, setDriverLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
@@ -132,6 +135,7 @@ function DriverHomeContent() {
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const scrollOffsetY = useRef(0);
   const scrollViewRef = useRef<ScrollView>(null);
+  const [showAllItems, setShowAllItems] = useState(false);
 
   const snapTo = useCallback((toValue: number) => {
     lastSheetY.current = toValue;
@@ -144,6 +148,33 @@ function DriverHomeContent() {
       mass: 0.8,
     }).start();
   }, [sheetY]);
+
+  // ─── Keyboard auto-expand & scroll ───
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const onKeyboardShow = (e: any) => {
+      const kh = e?.endCoordinates?.height || 300;
+      setKeyboardHeight(kh);
+      snapTo(SNAP_KEYBOARD);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    };
+
+    const onKeyboardHide = () => {
+      setKeyboardHeight(0);
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
+    const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [snapTo]);
 
   // Handle drag on the handle bar
   const panResponder = useMemo(() => PanResponder.create({
@@ -583,12 +614,16 @@ function DriverHomeContent() {
               <Marker
                 coordinate={{ latitude: routeData.pickup.lat, longitude: routeData.pickup.lng }}
                 title={routeData.pickup.name}
-                description="Restaurant Pickup"
+                description={(activeDelivery as any)?.type === 'GROCERY' || (activeDelivery as any)?.store ? "Store Pickup" : "Restaurant Pickup"}
                 anchor={{ x: 0.5, y: 1 }}
               >
                 <View style={styles.pinContainer}>
                   <View style={[styles.pinHead, { backgroundColor: Colors.warning }]}>
-                    <Ionicons name="restaurant" size={16} color="#FFF" />
+                    <Ionicons
+                      name={(activeDelivery as any)?.type === 'GROCERY' || (activeDelivery as any)?.store ? "storefront" : "restaurant"}
+                      size={16}
+                      color="#FFF"
+                    />
                   </View>
                   <View style={[styles.pinTail, { borderTopColor: Colors.warning }]} />
                 </View>
@@ -674,12 +709,16 @@ function DriverHomeContent() {
           <ScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.sheetScrollContent}
-            scrollEnabled={isSheetExpanded}
+            contentContainerStyle={[
+              styles.sheetScrollContent,
+              keyboardHeight > 0 && { paddingBottom: keyboardHeight + 80 },
+            ]}
+            scrollEnabled={isSheetExpanded || keyboardHeight > 0}
             nestedScrollEnabled
             onScroll={handleScrollEvent}
             scrollEventThrottle={16}
             bounces={false}
+            keyboardShouldPersistTaps="handled"
           >
             {/* ─── Status & Toggle Card ─── */}
             <View style={styles.statusCard}>
@@ -810,22 +849,61 @@ function DriverHomeContent() {
                   <View style={styles.divider} />
 
                   <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Restaurant</Text>
-                    <Text style={styles.infoValue}>{activeDelivery.restaurant?.name || "Restaurant"}</Text>
+                    <Text style={styles.infoLabel}>
+                      {(activeDelivery as any).type === 'GROCERY' || (activeDelivery as any).store ? "Store / Warehouse" : "Restaurant"}
+                    </Text>
+                    <Text style={styles.infoValue}>
+                      {(activeDelivery as any).store?.name || activeDelivery.restaurant?.name || "Merchant"}
+                    </Text>
                   </View>
                   <View style={styles.divider} />
 
-                  {/* ─── Order Items ─── */}
+                  {/* ─── Order Items (Grid Layout) ─── */}
                   {activeDelivery.items && activeDelivery.items.length > 0 && (
                     <>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoLabel}>Items</Text>
-                        <View style={{ alignItems: 'flex-end', flex: 1, paddingLeft: 16 }}>
-                          {activeDelivery.items.map((item: any, idx: number) => (
-                            <Text key={idx} style={[styles.infoValue, { fontSize: 13, marginBottom: 2 }]} numberOfLines={1}>
-                              {item.quantity}x {item.menuItem?.name || 'Item'}
-                            </Text>
+                      <View style={{ marginVertical: 4 }}>
+                        <Text style={[styles.infoLabel, { marginBottom: 8 }]}>
+                          Items ({activeDelivery.items.length})
+                        </Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                          {(showAllItems ? activeDelivery.items : activeDelivery.items.slice(0, 4)).map((item: any, idx: number) => (
+                            <View
+                              key={idx}
+                              style={{
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 8,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                              }}
+                            >
+                              <Text style={{ fontFamily: Fonts.brandBold, fontSize: 12, color: Colors.primary, marginRight: 4 }}>
+                                {item.quantity}x
+                              </Text>
+                              <Text style={{ fontFamily: Fonts.brandMedium, fontSize: 12, color: Colors.text }} numberOfLines={1}>
+                                {item.product?.name || item.menuItem?.name || item.itemName || 'Item'}
+                              </Text>
+                            </View>
                           ))}
+                          {activeDelivery.items.length > 4 && (
+                            <TouchableOpacity
+                              onPress={() => setShowAllItems(!showAllItems)}
+                              style={{
+                                backgroundColor: Colors.primary + '18',
+                                paddingHorizontal: 10,
+                                paddingVertical: 5,
+                                borderRadius: 8,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={{ fontFamily: Fonts.brandBold, fontSize: 12, color: Colors.primary }}>
+                                {showAllItems ? "Less ▲" : `+${activeDelivery.items.length - 4} more ▼`}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
                         </View>
                       </View>
                       <View style={styles.divider} />
@@ -948,6 +1026,12 @@ function DriverHomeContent() {
                           activeDelivery.paymentMode === 'COD' && !cashConfirmed && styles.otpInputDisabled,
                         ]}
                         editable={activeDelivery.paymentMode !== 'COD' || cashConfirmed}
+                        onFocus={() => {
+                          snapTo(SNAP_KEYBOARD);
+                          setTimeout(() => {
+                            scrollViewRef.current?.scrollToEnd({ animated: true });
+                          }, 100);
+                        }}
                       />
                       <TouchableOpacity
                         style={[

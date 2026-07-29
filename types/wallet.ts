@@ -16,6 +16,7 @@ export interface WalletTransaction {
     /** Whether money was added (CREDIT) or removed (DEBIT) */
     direction: "CREDIT" | "DEBIT";
     amount: number;
+    description: string | null;
     createdAt: string;
 }
 
