@@ -488,10 +488,11 @@ export default function RiderProfileScreen() {
         visible={isEditModalVisible}
         animationType="slide"
         transparent={true}
+        statusBarTranslucent={true}
         onRequestClose={() => setIsEditModalVisible(false)}
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior="padding"
           style={styles.modalOverlay}
         >
           <View style={styles.modalContent}>
@@ -502,7 +503,11 @@ export default function RiderProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+            <ScrollView 
+              showsVerticalScrollIndicator={false} 
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScroll}
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Full Name</Text>
                 <TextInput
@@ -581,9 +586,10 @@ export default function RiderProfileScreen() {
         visible={isCalendarVisible}
         transparent={true}
         animationType="fade"
+        statusBarTranslucent={true}
         onRequestClose={() => setIsCalendarVisible(false)}
       >
-        <View style={styles.calendarOverlay}>
+        <KeyboardAvoidingView behavior="padding" style={styles.calendarOverlay}>
           <View style={styles.calendarCard}>
             <View style={styles.calendarHeader}>
               <Text style={styles.calendarTitle}>Select Date</Text>
@@ -612,7 +618,7 @@ export default function RiderProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </>
   );
@@ -895,9 +901,9 @@ const createStyles = (Colors: any, isDark: boolean) => StyleSheet.create({
     backgroundColor: Colors.background,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    minHeight: "60%",
-    maxHeight: "90%",
+    height: "75%",
     paddingTop: 20,
+    overflow: "hidden",
   },
   modalHeader: {
     flexDirection: "row",
